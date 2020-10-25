@@ -5,7 +5,7 @@ from gym.utils import seeding
 
 class V0(gym.Env):
   metadata = {'render.modes': ['human'],
-              'video.frames_per_second': 50
+              'video.frames_per_second': 24
     }
 
   def __init__(self, n_teams = 2, n_agents = [1,1]):
@@ -26,7 +26,7 @@ class V0(gym.Env):
     self.agents = []
     for i in range(self.n_teams):
         for j in range(self.n_agents[i]):
-            self.agents.append(Agent(team = i, Id=str(i)+str(j),position = [50,50],direction=0))
+            self.agents.append(Agent(team = i, Id=str(i)+str(j),position = [250,250],direction=0))
 
     # action space: movement xy (2) (2), rotation (2), attack (1) . + NOOP
     self.action_space = spaces.Tuple([spaces.MultiDiscrete([3, 3, 3, 2])
@@ -55,7 +55,7 @@ class V0(gym.Env):
           assert self.action_space[i].contains(action_n[i])
           if agent.cooldown_attack > 0:
               agent.cooldown_attack -= self.delta_time
-          if agent.cooldown_attack > 0:
+          if agent.cooldown_speed_penalty > 0:
               agent.cooldown_speed_penalty -= self.delta_time
 
           else:
@@ -67,15 +67,26 @@ class V0(gym.Env):
       # rotate
       for i, agent in enumerate(self.agents):
           # 0,1,2 = CW, NOOP, CCW
-          agent.direction = (action_n[i][2]-1) * agent.rotation_speed * self.delta_time
+          # print(agent.direction)
+          # print(action_n[i][2]-1)
+          # print(agent.rotation_speed)
+          # print(self.delta_time)
+          agent.direction += (action_n[i][2]-1) * agent.rotation_speed * self.delta_time
 
+          # print(agent.direction)
       # move
       # TODO: agents must stay in an area
       for i, agent in enumerate(self.agents):
           # 0,1,2 = East, NOOP, West
-          agent.position[0] = np.cos(agent.direction) * (action_n[i][0]-1) * agent.speed * self.delta_time
-          # 0,1,2 = North, NOOP, South
-          agent.position[1] = np.sin(agent.direction) * (action_n[i][1] - 1) * agent.speed * self.delta_time
+          print(agent.speed)
+          print(agent.cooldown_speed_penalty)
+          agent.position[0] += (np.cos(agent.direction) * (action_n[i][0]-1) +
+                                np.sin(agent.direction) * (action_n[i][1]-1)) * agent.speed * self.delta_time
+          # 0,1,2 = South, NOOP, North
+          agent.position[1] += (np.cos(agent.direction) * (action_n[i][1]-1) +
+                                np.sin(agent.direction) * (action_n[i][0]-1)) * agent.speed * self.delta_time
+
+          # print(agent.position)
 
       # TODO: implement obs, reward, done
       # record observation for each agent
@@ -160,8 +171,9 @@ class Agent():
 
     @direction.setter
     def direction(self, value):
-          if np.abs(self.direction) > np.pi:
-              self.direction -= np.sign(self.direction)*(2*np.pi)
+        self._direction = value
+        if np.abs(self._direction) > np.pi:
+            self._direction -= np.sign(self._direction)*(2*np.pi)
 
 class Projectile():
     def __init__(self, position, direction, speed, range):
