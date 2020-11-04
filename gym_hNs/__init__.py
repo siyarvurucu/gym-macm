@@ -1,6 +1,6 @@
 from gym.envs.registration import register
 
 register(
-    id='hNs-v0',
-    entry_point='gym_hNs.envs:V0',
+    id='hNs-v1',
+    entry_point='gym_hNs.envs:World',
 )
