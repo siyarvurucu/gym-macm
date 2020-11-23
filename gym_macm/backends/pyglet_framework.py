@@ -481,6 +481,7 @@ class PygletWindow(pyglet.window.Window):
     def __init__(self, test):
         super(PygletWindow, self).__init__()
         self.test = test
+        self.frame_number = 0
 
     def on_mouse_motion(self, x, y, dx, dy):
 
@@ -502,6 +503,12 @@ class PygletWindow(pyglet.window.Window):
         Callback: the window was shown.
         """
         self.test.updateProjection()
+
+    def on_draw(self):
+        # pyglet.image.get_buffer_manager().get_color_buffer(). \
+        #     save('imgs/' + str(self.frame_number) + '.png')
+        # self.frame_number += 1
+        pass
 
     def on_key_press(self, key, modifiers):
         self.test._Keyboard_Event(key, down=True)
@@ -712,7 +719,7 @@ class PygletFramework(FrameworkBase):
         self.textLine = 15
 
         # Draw the title of the test at the top
-        self.Print(self.name)
+        # self.Print(self.name)
 
         # Step the physics
         # self.Step(self.settings)
@@ -775,6 +782,7 @@ class PygletFramework(FrameworkBase):
 
     def Step(self, settings):
        super(PygletFramework, self).Step(settings)
+       
 
     def ConvertScreenToWorld(self, x, y):
         """

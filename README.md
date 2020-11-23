@@ -1,7 +1,12 @@
-# gym-hackNslash
-gym environment for multi-agent 2d hack &amp; slash game
 
+# gym environment for multi-agent combat & movement tasks
 
-similar, line stealing;
-https://github.com/koulanurag/ma-gym/tree/master/ma_gym/envs/combat
-https://github.com/openai/multiagent-particle-envs/
+under development
+
+Combat
+-----
+![Alt Text](imgs/tdm_3_15.gif)
+
+Flock & Trajectory
+-----
+

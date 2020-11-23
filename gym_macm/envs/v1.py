@@ -362,8 +362,8 @@ class ControlledTDM(TDM):
 
 
 class Flock(gym.Env):
-    name = "Team Deathmatch"
-    description = ("TDM on an empty world")
+    name = "Flock"
+    description = ("Flock")
 
     def __init__(self, framework, n_agents = [1,1], actors = None, time_limit = 60):
         # super(World, self).__init__()
@@ -571,14 +571,7 @@ class Flock(gym.Env):
 
 
 if __name__ == "__main__":
-    # Problem: Cannot run in real time while reading states in a loop
-    # Possibilites:
-    # 1. Record the non-rendered loop. Run a recording:
-    # initial state and actions will be read from a file.
-    # Disadv1: physics wil be simulated twice.
-    # 2. Provide the actors to the world, so they will be a part of the system.
-    #  2^ makes the controlled world possible?
-    #
+
 
     if fwSettings.backend=='pyglet':
         from gym_macm.backends.pyglet_framework import PygletFramework as Framework
@@ -588,7 +581,7 @@ if __name__ == "__main__":
     framework = Framework
     import time
     import gym_macm.envs.bots as bots
-    n_agents = [10, 10, 10]
+    n_agents = [15, 15, 15]
     actors = [[bots.bot0] * n_agents[1]] * len(n_agents)
 
     s = time.time()
@@ -600,6 +593,7 @@ if __name__ == "__main__":
             world.step()
     else:
         world = ControlledTDM(framework = framework, n_agents = n_agents, actors=actors)
+        # world = TDM(framework=framework, n_agents=n_agents, actors=actors)
         world.framework.run()
     print(world.time_passed)
     print(time.time() - s)

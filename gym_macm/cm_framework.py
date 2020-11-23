@@ -363,12 +363,12 @@ class FrameworkBase(b2ContactListener):
         self.textLine = self.TEXTLINE_START
 
         # Draw the name of the test running
-        self.Print(self.name, (127, 127, 255))
+        # self.Print(self.name, (127, 127, 255))
 
-        if self.description:
-            # Draw the name of the test running
-            for s in self.description.split('\n'):
-                self.Print(s, (127, 255, 127))
+        # if self.description:
+        #     # Draw the name of the test running
+        #     for s in self.description.split('\n'):
+        #         self.Print(s, (127, 255, 127))
 
         # Do the main physics step
         self.Step(self.settings)
