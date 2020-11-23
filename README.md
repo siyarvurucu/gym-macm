@@ -1,6 +1,4 @@
 
-# gym environment for multi-agent combat & movement tasks
-
 under development
 
 Combat
