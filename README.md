@@ -9,4 +9,16 @@ Combat
 
 Flock & Trajectory
 -----
+...
 
+Baselines
+-----
+...
+
+Installation
+-----
+
+```
+$ cd <directory-to-clone>/gym-macm
+$ pip install -e gym-macm
+```
