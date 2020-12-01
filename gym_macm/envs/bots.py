@@ -34,3 +34,17 @@ def circle(obs=None):
         return np.array([2, 1, 2, 0])
     else:
         return np.array([2, 1, 1, 0])
+
+def flock(obs):
+    # print(obs)
+    targets = [node for node in obs["nodes"] if (node["type"]==1)]
+    if targets:
+        closest = targets[0]
+        for target in targets:
+            if target["position"][0] < target["position"][0]:
+                closest = target
+        rotation = np.sign(closest["position"][1]) + 1
+        forward = int(np.abs(closest["position"][1])<(np.pi/5)) + 1
+        return np.array([forward, 1, rotation])
+    else:
+        return idle()
