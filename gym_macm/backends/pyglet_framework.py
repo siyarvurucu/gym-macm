@@ -158,7 +158,13 @@ class PygletDraw(b2Draw):
                     # else:
                     #     color = colors['default']
 
-                    self.DrawShape(fixture.shape, transform, color)
+                    self.DrawBodyShape(fixture.shape, transform, color)
+
+            for object in self.test.gui_objects.values():
+                if object['shape'] == 'circle':
+                    self.DrawCircle(object['values'][0],
+                                    object['values'][1],
+                                    object['values'][2])
 
         # if self.test.settings.drawJoints:
         #     for joint in self.test.world.joints:
@@ -176,7 +182,7 @@ class PygletDraw(b2Draw):
                     for childIndex in range(shape.childCount):
                         self.DrawAABB(shape.getAABB(transform, childIndex), color)
 
-    def DrawShape(self, shape, transform, color, selected=False):
+    def DrawBodyShape(self, shape, transform, color, selected=False):
         """
         Draw any type of shape.
 
@@ -185,6 +191,7 @@ class PygletDraw(b2Draw):
         function. It's probably more Pythonic that way. Same deal
         with the joints.
         """
+
         if isinstance(shape, b2PolygonShape):
             self.DrawPolygon(shape, transform, color)
         elif isinstance(shape, b2EdgeShape):
@@ -346,6 +353,7 @@ class PygletDraw(b2Draw):
         """
         Draw an unfilled circle given center, radius and color.
         """
+
         unused, ll_vertices = self.getCircleVertices(
             center, radius, self.circle_segments)
         ll_count = len(ll_vertices) // 2
@@ -361,12 +369,6 @@ class PygletDraw(b2Draw):
         center = transform.position
         radius = shape.radius
         axis = (np.cos(transform.angle), np.sin(transform.angle))
-        # color =
-        # print(shape)
-        # print("-------")
-        # print(transform)
-        # print("-------")
-        # print(color)
         tf_vertices, ll_vertices = self.getCircleVertices(
             center, radius, self.circle_segments)
         tf_count, ll_count = len(tf_vertices) // 2, len(ll_vertices) // 2
@@ -638,6 +640,7 @@ class PygletFramework(FrameworkBase):
         self.world.renderer = self.renderer
         self._viewCenter = b2Vec2(0, 10.0)
         self.groundbody = self.world.CreateBody()
+        self.gui_objects = {}
 
     def setCenter(self, value):
         """

@@ -37,6 +37,7 @@ def circle(obs=None):
 
 def flock(obs):
     # print(obs)
+    obs = list(obs.values())[0]
     targets = [node for node in obs["nodes"] if (node["type"]==1)]
     if targets:
         closest = targets[0]
