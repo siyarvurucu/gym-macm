@@ -1,8 +1,6 @@
 import torch
 from util import *
 import bots
-
-
 from models import MyModel_1, Fc
 import time
 
@@ -36,7 +34,7 @@ mask[N_AGENTS::N_AGENTS+1] = False # TODO: this works only for 1 target
 
 logger = {"pred_q":[], "rewards":[], "loss":[]}
 
-train_steps = 10000
+train_steps = 5
 collect_x = 5
 update_target_x = 10
 simulate_x = 200

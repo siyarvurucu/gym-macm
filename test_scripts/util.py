@@ -19,7 +19,8 @@ def simulate(n_agents = [3], actors = bots.flock,
 def collect_data(model,
                  n_agents = [3],
                  time_limit = 15,
-                 epsilon = None):
+                 epsilon = None,
+                 device = 'cpu'):
         
     render = False
     env = gym.make("gym_macm:cm-flock-v0", render=render,
@@ -30,7 +31,7 @@ def collect_data(model,
     observations = []
     # obs_graphs = []
     rewards = []
-    obs = obs_to_graph(env.obs)
+    obs = obs_to_graph(env.obs, device)
     observations.append(obs)
 
     while not env.done:
@@ -42,13 +43,13 @@ def collect_data(model,
         acts = flock_action_map(acts)
         acts = {str(ID): acts[ID] for ID in range(n_agents[0])}
         obs, rews = env.step(acts)
-        obs = obs_to_graph(env.obs)
+        obs = obs_to_graph(env.obs, device)
         observations.append(obs)
         rewards.append(torch.tensor([rews[ID] for ID in rews],dtype=torch.float32))
 
     return observations, actions, rewards
         
-def obs_to_graph(obs, complete=True):
+def obs_to_graph(obs, complete=True, device='cpu'):
     "mode: closest, every node is connected to closest node of each type"
     "IDs: collect data for nodes only in IDs"
     edge_source = []
@@ -87,7 +88,10 @@ def obs_to_graph(obs, complete=True):
     edge_index = torch.tensor([edge_source, edge_target], dtype=torch.long)
     x = torch.tensor(x, dtype=torch.float)
     data = Data(x=x, edge_index=edge_index, edge_attr=torch.tensor(edge_attr, dtype=torch.float))
-    
+
+    if device != 'cpu':
+        data.to(device)
+
     if complete:
         return data#,graph_to_ext
     else:
@@ -150,7 +154,8 @@ def flock_action_map(actions, nn_to_env=True):
 import random
 class ReplayMemory(object):
 
-    def __init__(self, capacity, normalize_rews = False):
+    def __init__(self, capacity, normalize_rews = False,
+                 device = 'cpu'):
         self.capacity = capacity
         self.memory = []
         self.normalize = normalize_rews
