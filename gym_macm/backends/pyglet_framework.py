@@ -701,6 +701,12 @@ class PygletFramework(FrameworkBase):
         self.world.destructionListener = None
         self.world.renderer = None
 
+    def quit(self):
+        pyglet.app.event_loop.exit()
+        self.window.on_close()
+        # pyglet.clock.unschedule(self.SimulationLoop)
+
+
     def SimulationLoop(self, dt):
         """
         The main simulation loop. Don't override this, override Step instead.
@@ -729,8 +735,6 @@ class PygletFramework(FrameworkBase):
         self.env.step()
         self.renderer.batch.draw()
         self.window.invalid = True
-        if self.env.done:
-            pyglet.app.exit()
 
         self.fps = pyglet.clock.get_fps()
 

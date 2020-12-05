@@ -11,16 +11,12 @@ class NoRender(FrameworkBase):
         self.renderer = None
 
     def run(self):
-        """
-        Main loop.
-        """
+        pass
 
-
-        # self.world.contactListener = None
-        # self.world.destructionListener = None
-        # self.world.renderer = None
-
-
+    def quit(self):
+        self.world.contactListener = None
+        self.world.destructionListener = None
+        pass
 
     def Keyboard(self, key):
         """

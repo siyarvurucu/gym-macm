@@ -62,7 +62,9 @@ class Flock(gym.Env):
             x = self.start_spread * (random.random() - 0.5) + self.start_point[0]
             y = self.start_spread * (random.random() - 0.5) + self.start_point[1]
             angle = random.uniform(-1,1) * np.pi
-            agent = Agent(ID = str(i), actor = actors[i])
+            agent = Agent(ID = str(i))
+            if actors != None:
+                agent.actor = actors[i]
             agent.body = self.framework.world.CreateDynamicBody(
                 fixtures=circle,
                 position=(x, y),
@@ -75,17 +77,20 @@ class Flock(gym.Env):
         self.create_space()
         self.create_space_flag = False
 
+        self.obs = self.get_obs()
+
     def step(self, actions=None):
-        # print(settings)
+
         if self.done: # "Episode is finished."
-            print("Episode is finished.")
+            # print("Episode is finished.")
             self.quit() # TODO: is quit() necessary?
 
-        obs = self.get_obs()  # obs of t+1
         if actions==None:
+            # If actions are not provided, collect actions from
+            # actor of each agent
             actions = {}
             for agent in self.agents:
-                act = agent.actor({agent.id:obs[agent.id]})
+                act = agent.actor({agent.id:self.obs[agent.id]})
                 actions[agent.id] = act
 
         assert self.action_space.contains(actions)
@@ -120,8 +125,10 @@ class Flock(gym.Env):
         self.time_passed += (1/self.settings.hz)
         if  (self.time_passed > self.time_limit):
             self.done = True
-            print("Time is up")
-        return obs, actions, rewards
+
+        self.obs = self.get_obs()
+
+        return self.obs, rewards # s(t+1), r(t)
 
     def create_space(self):
         self.action_space = spaces.Dict({agent.id: spaces.MultiDiscrete([3, 3, 3])
@@ -212,9 +219,7 @@ class Flock(gym.Env):
                                                 'values': [p,1,b2Color(1,1,1)]}
 
     def quit(self):
-        self.framework.contactListener = None
-        self.framework.destructionListener = None
-        self.framework.renderer = None
+        self.framework.quit()
         return
 
 
