@@ -137,12 +137,14 @@ class GnnActor:
     def __call__(self, obs):
         data, graph_to_env = obs_to_graph(obs, complete=False)
         env_to_graph = {graph_to_env[k]: k for k in graph_to_env}
+
         with torch.no_grad():
             out = self.model(data)
+            out = out.max(1)[1]
         if self.epsilon:
-            r = torch.rand(n_agents[0], device=self.device).le(epsilon)
-            acts[r] = torch.randint(0, 26, (n_agents[0],), device=self.device)
-        out = flock_action_map((out.max(1)[1]))
+            if random.random() < self.epsilon:
+                out = torch.randint(0, 26, (len(out),), device=self.device)
+        out = flock_action_map(out)
         return out[env_to_graph[next(iter(obs))]]
 
 
