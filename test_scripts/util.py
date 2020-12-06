@@ -21,11 +21,12 @@ def collect_data(model,
                  n_agents=[3],
                  time_limit=15,
                  epsilon=None,
+                 teacher_bot=None,
                  device='cpu'):
     render = False
     env = gym.make("gym_macm:cm-flock-v0", render=render,
                    n_agents=n_agents, actors=None,
-                   time_limit=time_limit)
+                   time_limit=time_limit, hz = 15)
 
     actions = []
     observations = []
@@ -40,6 +41,9 @@ def collect_data(model,
             if epsilon:
                 r = torch.rand(n_agents[0], device=device).le(epsilon)
                 acts[r] = torch.randint(0, 26, (n_agents[0],), device=device)[r]
+            if teacher_bot:
+                acts[0] = torch.tensor(flock_action_map(teacher_bot(env.obs),
+                                           nn_to_env=False), device=device)
             actions.append(acts)
             acts = acts.cpu()
             acts = flock_action_map(acts)
@@ -125,14 +129,19 @@ def reduce_node_indices(u, v):
 
 
 class GnnActor:
-    def __init__(self, model):
+    def __init__(self, model, epsilon = None,
+                 device = 'cpu'):
         self.model = model
-
+        self.epsilon = epsilon
+        self.device = device
     def __call__(self, obs):
         data, graph_to_env = obs_to_graph(obs, complete=False)
         env_to_graph = {graph_to_env[k]: k for k in graph_to_env}
         with torch.no_grad():
             out = self.model(data)
+        if self.epsilon:
+            r = torch.rand(n_agents[0], device=self.device).le(epsilon)
+            acts[r] = torch.randint(0, 26, (n_agents[0],), device=self.device)
         out = flock_action_map((out.max(1)[1]))
         return out[env_to_graph[next(iter(obs))]]
 
@@ -155,7 +164,7 @@ def flock_action_map(actions, nn_to_env=True):
     if nn_to_env:
         return map[actions]
     else:
-        pass
+        return np.where((map==actions).all(axis=1))[0]
 
 
 import random
@@ -176,10 +185,16 @@ class ReplayMemory(object):
 
     def sample(self, batch_size):
         s0, a, s1, r = zip(*random.sample(self.memory, batch_size))
-        s0 = Batch.from_data_list(s0)
-        s1 = Batch.from_data_list(s1)
-        a = torch.cat(a)
-        r = torch.cat(r)
+        if batch_size != 1:
+            s0 = Batch.from_data_list(s0)
+            s1 = Batch.from_data_list(s1)
+            a = torch.cat(a)
+            r = torch.cat(r)
+        else:
+            s0 = s0[0]
+            s1 = s1[0]
+            a = a[0]
+            r = r[0]
         if self.normalize:
             r -= torch.mean(r)
             r /= torch.std(r)

@@ -9,7 +9,7 @@ fc1 = Fc(3,64,64,27)
 Qnet = MyModel_1(mlp=fc1)
 Tnet = MyModel_1(mlp=fc1)
 Tnet.eval()
-optimizer = torch.optim.RMSprop(Qnet.parameters())
+optimizer = torch.optim.Adam(Qnet.parameters())
 gnn_actor = GnnActor(Qnet)
 
 
@@ -18,15 +18,19 @@ gnn_actor = GnnActor(Qnet)
 dataloader = ReplayMemory(60000)
 N_AGENTS = 4
 N_TARGETS = 1
+TIME_LIMIT = 15
+HZ = 15 # fps of physics. same with 'hz' of gym.make
 obs, actions, rewards = collect_data(model = Qnet,
                                      n_agents = [N_AGENTS],
-                                     epsilon = 1)
+                                     time_limit = TIME_LIMIT,
+                                     epsilon = 1,
+                                     teacher_bot = bots.flock)
 sasr = list(zip(obs[:-1], actions, obs[1:], rewards))
 dataloader.push(sasr)
 
 # iteration
 from torch.nn import functional as F
-batch_size = 32
+batch_size = 3
 mask = torch.ones(batch_size*(N_AGENTS+N_TARGETS)).bool()
 mask[N_AGENTS::N_AGENTS+1] = False # TODO: this works only for 1 target
 
@@ -34,8 +38,8 @@ mask[N_AGENTS::N_AGENTS+1] = False # TODO: this works only for 1 target
 
 logger = {"pred_q":[], "rewards":[], "loss":[]}
 
-train_steps = 5
-collect_x = 5
+train_steps = 300000
+collect_x = int(100 * (TIME_LIMIT*N_AGENTS*HZ) / batch_size)
 update_target_x = 10
 simulate_x = 200
 eps_st, eps_end = 1, 0

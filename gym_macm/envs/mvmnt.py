@@ -25,8 +25,9 @@ class Flock(gym.Env):
     another object, it gets negative reward
     """
 
-    def __init__(self, render = False, n_agents = 10, actors = None, time_limit = 60):
+    def __init__(self, render = False, n_agents = 10, actors = None, time_limit = 60, hz = 60):
         # super(World, self).__init__()
+        fwSettings.hz = hz
         self.settings = fwSettings
         if render:
             from gym_macm.backends.pyglet_framework import PygletFramework as framework
@@ -46,6 +47,9 @@ class Flock(gym.Env):
         self.time_limit = time_limit # in seconds
         self.time_passed = 0 # time passed in the env
         self.target = b2Vec2((random.random()-0.5)*100, (random.random()-0.5)*100)
+        if render:
+            self.framework.gui_objects["target"] = {'shape': 'circle',
+                                                    'values': [self.target, 1, b2Color(1, 1, 1)]}
         # game settings
         circle = b2FixtureDef(
             shape=b2CircleShape(radius=0.5
