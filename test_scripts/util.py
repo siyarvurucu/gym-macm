@@ -4,24 +4,24 @@ import numpy as np
 import torch
 from torch_geometric.data import Data, Batch
 
-def simulate(n_agents = [3], actors = bots.flock,
+
+def simulate(n_agents=[3], actors=bots.flock,
              time_limit=2):
-    
     if not isinstance(actors, list):
         actors = [actors] * n_agents[0]
-        
+
     render = True
     env = gym.make("gym_macm:cm-flock-v0", render=render,
                    n_agents=n_agents, actors=actors,
                    time_limit=time_limit)
     env.framework.run()
-    
+
+
 def collect_data(model,
-                 n_agents = [3],
-                 time_limit = 15,
-                 epsilon = None,
-                 device = 'cpu'):
-        
+                 n_agents=[3],
+                 time_limit=15,
+                 epsilon=None,
+                 device='cpu'):
     render = False
     env = gym.make("gym_macm:cm-flock-v0", render=render,
                    n_agents=n_agents, actors=None,
@@ -31,24 +31,28 @@ def collect_data(model,
     observations = []
     # obs_graphs = []
     rewards = []
-    obs = obs_to_graph(env.obs, device)
+    obs = obs_to_graph(env.obs, device=device)
     observations.append(obs)
 
     while not env.done:
-        acts = model(obs)[:n_agents[0]].max(1)[1]
-        if epsilon:
-            r = torch.rand(n_agents[0]).le(epsilon)
-            acts[r] = torch.randint(0, 26, (n_agents[0],))[r]
-        actions.append(acts)
-        acts = flock_action_map(acts)
-        acts = {str(ID): acts[ID] for ID in range(n_agents[0])}
-        obs, rews = env.step(acts)
-        obs = obs_to_graph(env.obs, device)
-        observations.append(obs)
-        rewards.append(torch.tensor([rews[ID] for ID in rews],dtype=torch.float32))
+        with torch.no_grad():
+            acts = model(obs)[:n_agents[0]].max(1)[1]
+            if epsilon:
+                r = torch.rand(n_agents[0], device=device).le(epsilon)
+                acts[r] = torch.randint(0, 26, (n_agents[0],), device=device)[r]
+            actions.append(acts)
+            acts = acts.cpu()
+            acts = flock_action_map(acts)
+            acts = {str(ID): acts[ID] for ID in range(n_agents[0])}
+            obs, rews = env.step(acts)
+            obs = obs_to_graph(env.obs, device=device)
+            observations.append(obs)
+            rewards.append(torch.tensor([rews[ID] for ID in rews], dtype=torch.float32,
+                                        device=device))
 
     return observations, actions, rewards
-        
+
+
 def obs_to_graph(obs, complete=True, device='cpu'):
     "mode: closest, every node is connected to closest node of each type"
     "IDs: collect data for nodes only in IDs"
@@ -76,14 +80,13 @@ def obs_to_graph(obs, complete=True, device='cpu'):
         edge_target.append(int(node_target))
         edge_attr.append(closest_node0["position"])
         x[closest_node0["id"]] = closest_node0["type"]
-        
+
     if complete:
-        x = [[0]] * len(obs) + [[1]]      
+        x = [[0]] * len(obs) + [[1]]
     else:
         edge_source, edge_target, graph_to_ext = reduce_node_indices(edge_source,
                                                                      edge_target)
         x = [[x[graph_to_ext[i]]] for i in graph_to_ext]
-        
 
     edge_index = torch.tensor([edge_source, edge_target], dtype=torch.long)
     x = torch.tensor(x, dtype=torch.float)
@@ -93,12 +96,13 @@ def obs_to_graph(obs, complete=True, device='cpu'):
         data.to(device)
 
     if complete:
-        return data#,graph_to_ext
+        return data  # ,graph_to_ext
     else:
         return data, graph_to_ext
 
-def reduce_node_indices(u,v):
-    uv = np.array(u+v)
+
+def reduce_node_indices(u, v):
+    uv = np.array(u + v)
     u = np.array(u)
     v = np.array(v)
     c = 0
@@ -118,15 +122,17 @@ def reduce_node_indices(u,v):
         else:
             graph_to_external[i] = str(i)
     return u, v, graph_to_external
-    
+
 
 class GnnActor:
     def __init__(self, model):
         self.model = model
+
     def __call__(self, obs):
         data, graph_to_env = obs_to_graph(obs, complete=False)
-        env_to_graph = {graph_to_env[k]:k for k in graph_to_env}
-        out = self.model(data)
+        env_to_graph = {graph_to_env[k]: k for k in graph_to_env}
+        with torch.no_grad():
+            out = self.model(data)
         out = flock_action_map((out.max(1)[1]))
         return out[env_to_graph[next(iter(obs))]]
 
@@ -151,11 +157,14 @@ def flock_action_map(actions, nn_to_env=True):
     else:
         pass
 
+
 import random
+
+
 class ReplayMemory(object):
 
-    def __init__(self, capacity, normalize_rews = False,
-                 device = 'cpu'):
+    def __init__(self, capacity, normalize_rews=False,
+                 device='cpu'):
         self.capacity = capacity
         self.memory = []
         self.normalize = normalize_rews
@@ -166,7 +175,7 @@ class ReplayMemory(object):
             self.memory = self.memory[-self.capacity:]
 
     def sample(self, batch_size):
-        s0, a, s1, r = zip(*random.sample(self.memory,batch_size))
+        s0, a, s1, r = zip(*random.sample(self.memory, batch_size))
         s0 = Batch.from_data_list(s0)
         s1 = Batch.from_data_list(s1)
         a = torch.cat(a)
@@ -178,7 +187,6 @@ class ReplayMemory(object):
 
     def __len__(self):
         return len(self.memory)
-
 
 # class logger:
 #     def __init__(self, *args):
