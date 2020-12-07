@@ -1,15 +1,22 @@
 import torch
 from util import *
 import bots
-from models import MyModel_1, Fc1, Fc2, MyModel_2
+from models import *
 import time
 
 # MODEL
 device = 'cpu'
+# fc1 = Fc1(3,32)
+# fc2 = Fc2(32,64,27)
+# Qnet = MyModel_2(msg=fc1, dec=fc2)
+# Tnet = MyModel_2(msg=fc1, dec=fc2)
 fc1 = Fc1(3,32)
-fc2 = Fc2(32,64,27)
-Qnet = MyModel_2(msg=fc1, dec=fc2)
-Tnet = MyModel_2(msg=fc1, dec=fc2)
+fc2 = Fc1(32,32)
+fc3 = Fc1(32,32)
+fc4 = FcLin(32,27)
+Qnet = MyModel_3(loc=fc1, dec=fc2, msg=fc3, final = fc4, aggr="add")
+Tnet = MyModel_3(loc=fc1, dec=fc2, msg=fc3, final = fc4, aggr="add")
+
 Tnet.eval()
 Qnet.to(device)
 Tnet.to(device)
@@ -41,7 +48,7 @@ mask[N_AGENTS::N_AGENTS+1] = False # TODO: this works only for 1 target
 
 logger = {"pred_q":[], "rewards":[], "loss":[]}
 
-train_steps = 5000
+train_steps = 10000
 collect_x = int(20 * (TIME_LIMIT*N_AGENTS*HZ) / batch_size)
 update_target_x = 100
 simulate_x = 500
