@@ -6,14 +6,14 @@ from torch_geometric.data import Data, Batch
 
 
 def simulate(n_agents=[3], actors=bots.flock, colors = None,
-             time_limit=2, **kwargs):
+             time_limit=2, hz=15, **kwargs):
     if not isinstance(actors, list):
         actors = [actors] * n_agents[0]
 
     render = True
     env = gym.make("gym_macm:cm-flock-v0", render=render,
                    n_agents=n_agents, actors=actors, colors = colors,
-                   time_limit=time_limit)
+                   time_limit=time_limit, hz=hz)
     env.framework.Print(env.name)
     env.framework.updateProjection()
     for kw in kwargs:
@@ -26,7 +26,8 @@ def collect_data(model,
                  time_limit=15,
                  epsilon=None,
                  teacher_bot=None,
-                 device='cpu'):
+                 device='cpu',
+                 hz = 15):
     ''' data info:
                 Graph data is created using obs from environment. Node states are internal information
                  of agents. Agents may or may not have states, so during data collection, each model
@@ -40,7 +41,7 @@ def collect_data(model,
     render = False
     env = gym.make("gym_macm:cm-flock-v0", render=render,
                    n_agents=n_agents, actors=None,
-                   time_limit=time_limit, hz = 15)
+                   time_limit=time_limit, hz = hz)
 
     # if machines:
     #     assert(len(machines)==(n_agents[0]-1+int(teacher_bot==None)))
@@ -259,14 +260,5 @@ class ReplayMemory(object):
     def __len__(self):
         return len(self.memory)
 
-# class logger:
-#     def __init__(self, *args):
-#         self.logger = {str(arg):{"values":[],"marks":[]}
-#                        for arg in args}
-#     def __call__(self, *args):
-#         for arg in args:
-
-# def collect_data(n_agents=[3], actors=bots.flock):
-#     if not isinstance(actors, list):
-#         actors = [actors] * n_agents[0]
-
+def pick_hz():
+    return random.choices([8, 16, 32, 64], [8, 4, 2, 1])[0]

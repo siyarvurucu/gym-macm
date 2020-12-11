@@ -159,6 +159,7 @@ class Flock(gym.Env):
         return rewards
 
     def get_obs(self):
+        mode = "cartesian" # or radial
         obs = {}
         for agent in self.agents:
             obs[agent.id] = {"nodes": []}
@@ -175,17 +176,26 @@ class Flock(gym.Env):
             rel_position = closest_agent.body.position - agent.body.position
             t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
             t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
+            if mode=="radial":
+                position = np.array([closest_dist,t])
+            if mode=="cartesian":
+                position = np.array([r,np.cos(t),np.sin(t)])
             obs[agent.id]["nodes"].append({"type": 0,
                                            "id": closest_agent.id,
-                                           "position": np.array([closest_dist, t])})
+                                           "position": position})
 
             rel_position = self.target - agent.body.position
             r = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
             t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
             t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
+            if mode == "radial":
+                position = np.array([r,t])
+            if mode=="cartesian":
+                position = np.array([r,np.cos(t),np.sin(t)])
+
             obs[agent.id]["nodes"].append({"type": 1,
                                            "id": len(self.agents),
-                                           "position": np.array([r, t])})
+                                           "position": position})
 
         return obs
 

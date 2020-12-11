@@ -95,14 +95,16 @@ class MyModel_3(MessagePassing):
 
 #
 class MyModel_4(MessagePassing):
-    def __init__(self, isize=32, hsize=32, aggr = None, **kwargs):
+    def __init__(self, isize=32, hsize=32,
+                 edge_attr_size = 3, node_attr_size = 1,
+                 aggr = None, **kwargs):
         super(MyModel_4, self).__init__(aggr=aggr, **kwargs)
         # self.dec = dec
         # curret: batch_size 1 only. todo nodes_belong
         self.has_states = True
         self.hsize = hsize
         self.rnn = torch.nn.LSTM(isize, hsize, 1)
-        self.msg = Fc1(3,isize)
+        self.msg = Fc1(node_attr_size+edge_attr_size ,isize)
         self.dec = FcLin(hsize, 27)
 
     def get_empty_states(self, n_agents):
