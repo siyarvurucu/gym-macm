@@ -44,8 +44,11 @@ def flock(obs):
         for target in targets:
             if target["position"][0] < target["position"][0]:
                 closest = target
-        rotation = np.sign(closest["position"][1]) + 1
-        forward = int(np.abs(closest["position"][1])<(np.pi/5)) + 1
-        return np.array([forward, 1, rotation])
+        if closest["position"][0]<1:
+            return idle()[:3]
+        else:
+            rotation = np.sign(closest["position"][1]) + 1
+            forward = int(np.abs(closest["position"][1])<(np.pi/5)) + 1
+            return np.array([forward, 1, rotation])
     else:
-        return idle()
+        return idle()[:3]

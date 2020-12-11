@@ -591,29 +591,22 @@ class PygletFramework(FrameworkBase):
 
     def __reset(self):
         # Screen/rendering-related
-        self._viewZoom = 10.0
-        self._viewCenter = None
-        self._viewOffset = None
-        self.screenSize = None
-        self.rMouseDown = False
-        self.textLine = 30
-        self.font = None
-        self.fps = 0
+        # self._viewZoom = 10.0
+        # self._viewCenter = None
+        # self._viewOffset = None
+        # self.screenSize = None
+        # self.rMouseDown = False
+        # self.textLine = 30
+        # self.font = None
+        # self.fps = 0
 
         # Window-related
         self.fontname = "Arial"
-        self.fontsize = 10
+        self.fontsize = 14
         self.font = None
         self.textGroup = None
-
-        # Screen-related
-        self._viewZoom = 1.0
-        self._viewCenter = None
-        self.screenSize = None
         self.textLine = 30
-        self.font = None
         self.fps = 0
-
         self.setup_keys()
 
     def __init__(self, settings):
@@ -627,6 +620,9 @@ class PygletFramework(FrameworkBase):
 
         print('Initializing Pyglet framework...')
         self.window = PygletWindow(self)
+        self.window.set_location(100, 100)
+        self.window.width = 1280
+        self.window.height = 960
 
         # Initialize the text display group
         self.textGroup = grText(self.window)
@@ -636,9 +632,11 @@ class PygletFramework(FrameworkBase):
         self.screenSize = b2Vec2(self.window.width, self.window.height)
 
         self.renderer = PygletDraw(self)
+        self.renderer.static_batch = pyglet.graphics.Batch()
         self.renderer.surface = self.window.screen
         self.world.renderer = self.renderer
-        self._viewCenter = b2Vec2(0, 10.0)
+        self._viewCenter = b2Vec2(0, 0)
+        self._viewZoom = 2
         self.groundbody = self.world.CreateBody()
         self.gui_objects = {}
 
@@ -733,6 +731,7 @@ class PygletFramework(FrameworkBase):
         # Step the physics
         # self.Step(self.settings)
         self.env.step()
+        self.renderer.static_batch.draw()
         self.renderer.batch.draw()
         self.window.invalid = True
 
@@ -748,9 +747,6 @@ class PygletFramework(FrameworkBase):
         if down:
             if key == pyglet.window.key.ESCAPE:
                 exit(0)
-            elif key == pyglet.window.key.SPACE:
-                # Launch a bomb
-                self.LaunchRandomBomb()
             elif key == Keys.K_z:
                 # Zoom in
                 self.viewZoom = min(1.1 * self.viewZoom, 20.0)
@@ -826,9 +822,9 @@ class PygletFramework(FrameworkBase):
         """
         pyglet.text.Label(str, font_name=self.fontname,
                           font_size=self.fontsize, x=5, y=self.window.height -
-                          self.textLine, color=color, batch=self.renderer.batch,
+                          self.textLine, color=color, batch=self.renderer.static_batch,
                           group=self.textGroup)
-        self.textLine += 15
+        self.textLine += self.fontsize + 3
 
     def Keyboard(self, key):
         """

@@ -5,15 +5,19 @@ import torch
 from torch_geometric.data import Data, Batch
 
 
-def simulate(n_agents=[3], actors=bots.flock,
-             time_limit=2):
+def simulate(n_agents=[3], actors=bots.flock, colors = None,
+             time_limit=2, **kwargs):
     if not isinstance(actors, list):
         actors = [actors] * n_agents[0]
 
     render = True
     env = gym.make("gym_macm:cm-flock-v0", render=render,
-                   n_agents=n_agents, actors=actors,
+                   n_agents=n_agents, actors=actors, colors = colors,
                    time_limit=time_limit)
+    env.framework.Print(env.name)
+    env.framework.updateProjection()
+    for kw in kwargs:
+        env.framework.Print(str(kw)+": "+str(kwargs[kw]))
     env.framework.run()
 
 
@@ -23,21 +27,45 @@ def collect_data(model,
                  epsilon=None,
                  teacher_bot=None,
                  device='cpu'):
+    ''' data info:
+                Graph data is created using obs from environment. Node states are internal information
+                 of agents. Agents may or may not have states, so during data collection, each model
+                 write the state of their agents as <model_name> attr of data, inside of this
+                 function. This is required for the training, if the data is
+                 being collected for later use and sampled randomly.
+
+                 During inference, actors keep track of their states already so no need to write it
+                 into data.
+            '''
     render = False
     env = gym.make("gym_macm:cm-flock-v0", render=render,
                    n_agents=n_agents, actors=None,
                    time_limit=time_limit, hz = 15)
+
+    # if machines:
+    #     assert(len(machines)==(n_agents[0]-1+int(teacher_bot==None)))
+    #     for i,agent in enumerate(env.agents):
+    #         agent.machine = machines[i]
 
     actions = []
     observations = []
     # obs_graphs = []
     rewards = []
     obs = obs_to_graph(env.obs, device=device)
+    # TODO: for model in models:
+    if model.has_states:
+        setattr(obs, model._get_name(), model.get_empty_states(n_agents[0]))
     observations.append(obs)
+
 
     while not env.done:
         with torch.no_grad():
-            acts = model(obs)[:n_agents[0]].max(1)[1]
+            if model.has_states:
+                acts, next_states = model(obs)
+                acts = acts[:n_agents[0]].max(1)[1]
+            else:
+                acts = model(obs)[:n_agents[0]].max(1)[1]
+
             if epsilon:
                 r = torch.rand(n_agents[0], device=device).le(epsilon)
                 acts[r] = torch.randint(0, 26, (n_agents[0],), device=device)[r]
@@ -47,65 +75,82 @@ def collect_data(model,
             actions.append(acts)
             acts = acts.cpu()
             acts = flock_action_map(acts)
-            acts = {str(ID): acts[ID] for ID in range(n_agents[0])}
+            agent_ids = obs.ids[obs.ids.lt(n_agents[0])]
+            acts = {ID.item(): acts[i] for i, ID in enumerate(agent_ids)}
+            # acts = {ID: acts[i] for i,ID in enumerate(obs.ids)}
             obs, rews = env.step(acts)
             obs = obs_to_graph(env.obs, device=device)
+            new_agent_ids = obs.ids[obs.ids.lt(n_agents[0])]
+            if model.has_states:
+                setattr(obs, model._get_name(), next_states)
             observations.append(obs)
             rewards.append(torch.tensor([rews[ID] for ID in rews], dtype=torch.float32,
                                         device=device))
+
 
     return observations, actions, rewards
 
 
 def obs_to_graph(obs, complete=True, device='cpu'):
     "mode: closest, every node is connected to closest node of each type"
-    "IDs: collect data for nodes only in IDs"
+
     edge_source = []
     edge_target = []
     edge_attr = []
-    x = {}
+    id_to_graph_ind = {i:i for i in range(len(obs))} if complete else {}
+    x = [0]*len(obs) if complete else []
 
-    for node_target in obs:
-        closest_dist = np.inf
-        closest_node0 = None
-        x[node_target] = 0
-        for node_source in obs[node_target]["nodes"]:
-            if node_source["type"] == 0:
-                if node_source["position"][0] < closest_dist:
-                    closest_dist = node_source["position"][0]
-                    closest_node0 = node_source
-            else:
-                edge_source.append(int(node_source["id"]))
-                edge_target.append(int(node_target))
-                edge_attr.append(node_source["position"])
-                x[node_source["id"]] = node_source["type"]
+    for node_target_id in obs:
+        if node_target_id not in id_to_graph_ind:
+            id_to_graph_ind[node_target_id] = len(id_to_graph_ind)
+            x.append(0)
 
-        edge_source.append(int(closest_node0["id"]))
-        edge_target.append(int(node_target))
-        edge_attr.append(closest_node0["position"])
-        x[closest_node0["id"]] = closest_node0["type"]
+        for node_source in obs[node_target_id]["nodes"]:
+            if node_source["id"] not in id_to_graph_ind:
+                id_to_graph_ind[node_source["id"]] = len(id_to_graph_ind)
+                x.append(node_source["type"])
 
-    if complete:
-        x = [[0]] * len(obs) + [[1]]
-    else:
-        edge_source, edge_target, graph_to_ext = reduce_node_indices(edge_source,
-                                                                     edge_target)
-        x = [[x[graph_to_ext[i]]] for i in graph_to_ext]
+            edge_source.append(id_to_graph_ind[node_source["id"]])
+            edge_target.append(id_to_graph_ind[node_target_id])
+            edge_attr.append(node_source["position"])
+
+        # edge_source.append(int(closest_node0["id"]))
+        # edge_target.append(int(node_target))
+        # edge_attr.append(closest_node0["position"])
+        # x[closest_node0["id"]] = closest_node0["type"]
+        # ids[closest_node0["id"]] = int(closest_node0["id"])
+
+    # if complete:
+    #     # hardcoded. # of agents + # of targets. TODO
+    #     ids = [i for i in range(len(obs)+1)]
+    #     x = [0]*len(obs) + [1]
+    # else:
+    #     edge_source, edge_target, graph_to_ext = reduce_node_indices(edge_source,
+    #                                                                  edge_target)
+    #     x = [x[graph_to_ext[i]] for i in graph_to_ext]
+    #     ids = [ids[graph_to_ext[i]] for i in graph_to_ext]
 
     edge_index = torch.tensor([edge_source, edge_target], dtype=torch.long)
-    x = torch.tensor(x, dtype=torch.float)
-    data = Data(x=x, edge_index=edge_index, edge_attr=torch.tensor(edge_attr, dtype=torch.float))
+    x = torch.tensor(x, dtype=torch.float).view(-1,1)
+    ids = torch.tensor([i for i in id_to_graph_ind], dtype=torch.int16)
+
+    data = Data(x=x, edge_index=edge_index, ids=ids, edge_attr=torch.tensor(edge_attr, dtype=torch.float))
 
     if device != 'cpu':
         data.to(device)
 
-    if complete:
-        return data  # ,graph_to_ext
-    else:
-        return data, graph_to_ext
-
+    return data
 
 def reduce_node_indices(u, v):
+    '''
+    :param u: source node indices
+    :param v: target node indices
+    :return: reduced node indices (u, v) and dict to map them back to environment
+
+    Models receive partial observation if they do not control all agents.
+    This function reduces the indices. (1,3,4,6,9) --> (1,2,3,4,5), {2:'6', 5:'9'}
+    '''
+
     uv = np.array(u + v)
     u = np.array(u)
     v = np.array(v)
@@ -132,20 +177,29 @@ class GnnActor:
     def __init__(self, model, epsilon = None,
                  device = 'cpu'):
         self.model = model
+        if model.has_states:
+            self.state = model.get_empty_states(1)
+            self.state_shape = self.state.shape
         self.epsilon = epsilon
         self.device = device
-    def __call__(self, obs):
-        data, graph_to_env = obs_to_graph(obs, complete=False)
-        env_to_graph = {graph_to_env[k]: k for k in graph_to_env}
+        self.action_size = 27
 
-        with torch.no_grad():
-            out = self.model(data)
-            out = out.max(1)[1]
-        if self.epsilon:
-            if random.random() < self.epsilon:
-                out = torch.randint(0, 26, (len(out),), device=self.device)
+    def __call__(self, obs):
+        data = obs_to_graph(obs, complete=False)
+        if self.model.has_states:
+            setattr(data, self.model._get_name(), self.state)
+            out, self.state = self.model(data)
+            # self.state = new_states.permute(1,0).unsqueeze(0)
+        # env_to_graph = {graph_to_env[k]: k for k in graph_to_env}
+        # my_id = next(iter(obs))
+        else:
+            out = self.model(data)[0]
+        out = out.max(0)[1]
+        if self.epsilon and random.random() < self.epsilon:
+            # even if the action is random, should the state be updated normally
+            out = torch.randint(0, self.action_size-1, (1,), device=self.device)
         out = flock_action_map(out)
-        return out[env_to_graph[next(iter(obs))]]
+        return out
 
 
 def flock_action_map(actions, nn_to_env=True):
@@ -215,3 +269,4 @@ class ReplayMemory(object):
 # def collect_data(n_agents=[3], actors=bots.flock):
 #     if not isinstance(actors, list):
 #         actors = [actors] * n_agents[0]
+

@@ -12,20 +12,17 @@ class Agent:
         self.actor = actor
         self.rotation_speed = 0.8 * (2 * np.pi)
         self.force = 20 # walk force
-
-    @property
-    def color(self):
-        return b2Color(1, 0.2, 0.2)
+        self.color = b2Color(1, 0.2, 0.2)
 
 class Flock(gym.Env):
-    name = "Flock"
+    name = "Flock v0"
     description = ("Flock")
     """
     Agents moving to a point as a group. If an agent crashes with 
     another object, it gets negative reward
     """
 
-    def __init__(self, render = False, n_agents = 10, actors = None, time_limit = 60, hz = 60):
+    def __init__(self, render = False, n_agents = 10, actors = None, colors = None, time_limit = 60, hz = 60):
         # super(World, self).__init__()
         fwSettings.hz = hz
         self.settings = fwSettings
@@ -66,9 +63,11 @@ class Flock(gym.Env):
             x = self.start_spread * (random.random() - 0.5) + self.start_point[0]
             y = self.start_spread * (random.random() - 0.5) + self.start_point[1]
             angle = random.uniform(-1,1) * np.pi
-            agent = Agent(ID = str(i))
-            if actors != None:
+            agent = Agent(ID = i)
+            if actors:
                 agent.actor = actors[i]
+            if colors:
+                agent.color = colors[i]
             agent.body = self.framework.world.CreateDynamicBody(
                 fixtures=circle,
                 position=(x, y),
@@ -163,22 +162,29 @@ class Flock(gym.Env):
         obs = {}
         for agent in self.agents:
             obs[agent.id] = {"nodes": []}
+            closest_dist = np.inf
+            closest_agent = None
             for other_agent in self.agents:
                 if agent == other_agent:
                     continue
                 rel_position = other_agent.body.position - agent.body.position
                 r = np.sqrt(b2DistanceSquared(other_agent.body.position, agent.body.position))
-                t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
-                t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
-                obs[agent.id]["nodes"].append({"type": 0,
-                                               "id": other_agent.id,
-                                               "position": np.array([r, t])})
+                if r < closest_dist:
+                    closest_agent = other_agent
+                    closest_dist = r
+            rel_position = closest_agent.body.position - agent.body.position
+            t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
+            t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
+            obs[agent.id]["nodes"].append({"type": 0,
+                                           "id": closest_agent.id,
+                                           "position": np.array([closest_dist, t])})
+
             rel_position = self.target - agent.body.position
             r = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
             t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
             t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
             obs[agent.id]["nodes"].append({"type": 1,
-                                           "id": str(len(self.agents)),
+                                           "id": len(self.agents),
                                            "position": np.array([r, t])})
 
         return obs
