@@ -29,10 +29,12 @@ class MyModel_1(MessagePassing):
 
 class MyModel_2(MessagePassing):
     has_states = False # Does model have states that should be saved in the dataset?
-    def __init__(self, aggr: str = 'add', **kwargs):
+    def __init__(self, hsize = 64, action_size = 27,
+                 edge_attr_size = 3, node_attr_size = 1,
+                 aggr: str = 'add', **kwargs):
         super(MyModel_2, self).__init__(aggr=aggr, **kwargs)
-        self.dec = Fc2(128,128,27)
-        self.msg = Fc1(3,128)
+        self.dec = Fc2(hsize,hsize,action_size)
+        self.msg = Fc1(edge_attr_size+node_attr_size,hsize)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -106,6 +108,12 @@ class MyModel_4(MessagePassing):
         self.rnn = torch.nn.LSTM(isize, hsize, 1)
         self.msg = Fc1(node_attr_size+edge_attr_size ,isize)
         self.dec = FcLin(hsize, 27)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        reset(self.rnn)
+        reset(self.msg)
+        reset(self.dec)
 
     def get_empty_states(self, n_agents):
         # dims of rnn states = (num_layers, batch_size, features)

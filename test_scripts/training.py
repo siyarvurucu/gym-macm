@@ -6,8 +6,7 @@ import time
 from plott import training_plotter
 
 
-N_AGENTS = 8
-N_TARGETS = 1
+
 # MODEL
 device = 'cpu'
 # Qnet = MyModel_4(32,32) #MyModel_1(mlp=fc1)
@@ -34,6 +33,8 @@ optimizer = torch.optim.Adam(Qnet.parameters())
 # optimizer.load_state_dict(torch.load("saved_models/opt_M2_dqn"))
 
 # COLLECT
+N_AGENTS = 8
+N_TARGETS = 1
 dataloader = ReplayMemory(200000)
 TIME_LIMIT = 25
 HZ = 8 # fps of physics. same with 'hz' of gym.make
