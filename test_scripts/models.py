@@ -30,11 +30,11 @@ class MyModel_1(MessagePassing):
 class MyModel_2(MessagePassing):
     has_states = False # Does model have states that should be saved in the dataset?
     def __init__(self, hsize = 64, action_size = 27,
-                 edge_attr_size = 3, node_attr_size = 1,
+                 edge_attr_size = 2, node_attr_size = 1,
                  aggr: str = 'add', **kwargs):
         super(MyModel_2, self).__init__(aggr=aggr, **kwargs)
-        self.dec = Fc2(hsize,hsize,action_size)
-        self.msg = Fc1(edge_attr_size+node_attr_size,hsize)
+        self.dec = Fc2(32,hsize,action_size)
+        self.msg = Fc1(edge_attr_size+node_attr_size,32)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -98,7 +98,7 @@ class MyModel_3(MessagePassing):
 #
 class MyModel_4(MessagePassing):
     def __init__(self, isize=32, hsize=32,
-                 edge_attr_size = 3, node_attr_size = 1,
+                 edge_attr_size = 2, node_attr_size = 1,
                  aggr = None, **kwargs):
         super(MyModel_4, self).__init__(aggr=aggr, **kwargs)
         # self.dec = dec

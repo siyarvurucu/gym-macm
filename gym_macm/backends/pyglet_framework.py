@@ -507,9 +507,10 @@ class PygletWindow(pyglet.window.Window):
         self.test.updateProjection()
 
     def on_draw(self):
-        # pyglet.image.get_buffer_manager().get_color_buffer(). \
-        #     save('imgs/' + str(self.frame_number) + '.png')
-        # self.frame_number += 1
+        if self.test.env.record:
+            pyglet.image.get_buffer_manager().get_color_buffer(). \
+                save('imgs/' + str(self.frame_number) + '.png')
+            self.frame_number += 1
         pass
 
     def on_key_press(self, key, modifiers):

@@ -5,29 +5,31 @@ import torch
 from torch_geometric.data import Data, Batch
 
 
-def simulate(n_agents=[3], actors=bots.flock, colors = None,
-             time_limit=2, hz=15, **kwargs):
+def simulate(n_agents=[3], actors=bots.flock,
+             colors = None, **kwargs):
     if not isinstance(actors, list):
         actors = [actors] * n_agents[0]
 
-    render = True
-    env = gym.make("gym_macm:cm-flock-v0", render=render,
+    pr_kwargs = {}
+    for kw in list(kwargs):
+        if kw.startswith("print"):
+            pr_kwargs[kw[5:]] = kwargs[kw]
+            kwargs.pop(kw)
+    env = gym.make("gym_macm:cm-flock-v0", render=True,
                    n_agents=n_agents, actors=actors, colors = colors,
-                   time_limit=time_limit, hz=hz)
+                   **kwargs)
     env.framework.Print(env.name)
     env.framework.updateProjection()
-    for kw in kwargs:
-        env.framework.Print(str(kw)+": "+str(kwargs[kw]))
+    for kw in pr_kwargs:
+        env.framework.Print(str(kw)+": "+str(pr_kwargs[kw]))
     env.framework.run()
 
 
 def collect_data(model,
                  n_agents=[3],
-                 time_limit=15,
                  epsilon=None,
                  teacher_bot=None,
-                 device='cpu',
-                 hz = 15):
+                 device='cpu', **kwargs):
     ''' data info:
                 Graph data is created using obs from environment. Node states are internal information
                  of agents. Agents may or may not have states, so during data collection, each model
@@ -40,20 +42,14 @@ def collect_data(model,
             '''
     render = False
     env = gym.make("gym_macm:cm-flock-v0", render=render,
-                   n_agents=n_agents, actors=None,
-                   time_limit=time_limit, hz = hz)
+                   n_agents=n_agents, actors=None, **kwargs)
 
-    # if machines:
-    #     assert(len(machines)==(n_agents[0]-1+int(teacher_bot==None)))
-    #     for i,agent in enumerate(env.agents):
-    #         agent.machine = machines[i]
 
     actions = []
     observations = []
-    # obs_graphs = []
     rewards = []
     obs = obs_to_graph(env.obs, device=device)
-    # TODO: for model in models:
+    # TODO: for model in models: multiple model training
     if model.has_states:
         setattr(obs, model._get_name(), model.get_empty_states(n_agents[0]))
     observations.append(obs)
@@ -142,36 +138,36 @@ def obs_to_graph(obs, complete=True, device='cpu'):
 
     return data
 
-def reduce_node_indices(u, v):
-    '''
-    :param u: source node indices
-    :param v: target node indices
-    :return: reduced node indices (u, v) and dict to map them back to environment
-
-    Models receive partial observation if they do not control all agents.
-    This function reduces the indices. (1,3,4,6,9) --> (1,2,3,4,5), {2:'6', 5:'9'}
-    '''
-
-    uv = np.array(u + v)
-    u = np.array(u)
-    v = np.array(v)
-    c = 0
-    uuv = np.unique(uv)
-    graph_to_external = {}
-    for i in uuv:
-        while c in uuv:
-            graph_to_external[c] = str(c)
-            c += 1
-        if c > max(uuv):
-            break
-        if i >= len(uuv):
-            graph_to_external[c] = str(i)
-            u[u == i] = c
-            v[v == i] = c
-            c += 1
-        else:
-            graph_to_external[i] = str(i)
-    return u, v, graph_to_external
+# def reduce_node_indices(u, v):
+#     '''
+#     :param u: source node indices
+#     :param v: target node indices
+#     :return: reduced node indices (u, v) and dict to map them back to environment
+#
+#     Models receive partial observation if they do not control all agents.
+#     This function reduces the indices. (1,3,4,6,9) --> (1,2,3,4,5), {2:'6', 5:'9'}
+#     '''
+#
+#     uv = np.array(u + v)
+#     u = np.array(u)
+#     v = np.array(v)
+#     c = 0
+#     uuv = np.unique(uv)
+#     graph_to_external = {}
+#     for i in uuv:
+#         while c in uuv:
+#             graph_to_external[c] = str(c)
+#             c += 1
+#         if c > max(uuv):
+#             break
+#         if i >= len(uuv):
+#             graph_to_external[c] = str(i)
+#             u[u == i] = c
+#             v[v == i] = c
+#             c += 1
+#         else:
+#             graph_to_external[i] = str(i)
+#     return u, v, graph_to_external
 
 
 class GnnActor:
@@ -243,10 +239,10 @@ class ReplayMemory(object):
     def sample(self, batch_size):
         s0, a, s1, r = zip(*random.sample(self.memory, batch_size))
         if batch_size != 1:
-            s0 = Batch.from_data_list(s0)
-            s1 = Batch.from_data_list(s1)
-            a = torch.cat(a)
-            r = torch.cat(r)
+            Bs0 = Batch.from_data_list(s0)
+            Bs1 = Batch.from_data_list(s1)
+            Ba = torch.cat(a)
+            Br = torch.cat(r)
         else:
             s0 = s0[0]
             s1 = s1[0]
@@ -255,7 +251,7 @@ class ReplayMemory(object):
         if self.normalize:
             r -= torch.mean(r)
             r /= torch.std(r)
-        return s0, a, s1, r
+        return Bs0, Ba, Bs1, Br #, s0, a, s1, r
 
     def __len__(self):
         return len(self.memory)

@@ -20,8 +20,7 @@
 # misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 
-# This is an altered version.
-# OptParse is replaced by argparse
+# This is an altered version. github/siyarvurucu/gym-macm
 
 class fwSettings(object):
     # The default backend to use in (can be: pyglet, pygame, etc.)
@@ -83,9 +82,7 @@ sliders = [
     {'name': 'velocityIterations', 'text': 'Vel Iters', 'min': 1, 'max': 500},
 ]
 
-# from optparse import OptionParser
 import argparse
-# parser = OptionParser()
 parser = argparse.ArgumentParser()
 list_options = [i for i in dir(fwSettings)
                 if not i.startswith('_')]
@@ -106,4 +103,36 @@ for opt_name in list_options:
         parser.add_argument('--' + opt_name, dest=opt_name, default=value,
                           type=type(value),
                           help='sets the %s option' % (opt_name,))
-fwSettings = parser.parse_args()
+# fwSettings = parser.parse_args()
+
+import numpy as np
+from Box2D import b2FixtureDef, b2CircleShape
+class flockSettings(fwSettings):
+    def __init__(self, **kwargs):
+        super(flockSettings, self).__init__()
+        self.coord = "polar"
+        self.time_limit = 60
+        self.record = False
+
+        self.world_width = 30
+        self.world_height = 30
+        self.start_spread = 20
+        self.start_point = [0, 0]
+        self.reward_mode = "binary"
+        self._reward_tol = 10
+        self.agent_rotation_speed = 0.8 * (2 * np.pi)
+        self.agent_force = 20  # walk force
+
+        circle = b2FixtureDef(
+            shape=b2CircleShape(radius=0.5
+                                ),
+            density=1,
+            friction=0.3
+        )
+        self.bodySettings = {"fixtures":circle, "linearDamping":5, "fixedRotation":True}
+        for kw in kwargs:
+            setattr(self,kw,kwargs[kw])
+
+        self.reward_tol =  self._reward_tol if self.reward_mode == "binary" else 1
+
+

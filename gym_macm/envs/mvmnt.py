@@ -1,18 +1,21 @@
 import gym
 from gym import spaces
-from gym_macm.settings import fwSettings
+from gym_macm.settings import flockSettings
 from Box2D import (b2CircleShape, b2EdgeShape, b2FixtureDef,
                    b2PolygonShape, b2DistanceSquared, b2Color, b2Vec2)
+from gym_macm.backends.pyglet_framework import PygletFramework
+from gym_macm.backends.no_render import NoRender
+
 import random
 import numpy as np
 
 class Agent:
-    def __init__(self, ID, actor=None):
+    def __init__(self, settings, ID, actor=None):
         self.id = ID
         self.actor = actor
-        self.rotation_speed = 0.8 * (2 * np.pi)
-        self.force = 20 # walk force
-        self.color = b2Color(1, 0.2, 0.2)
+        self.rotation_speed = settings.agent_rotation_speed
+        self.force = settings.agent_force
+        self.color = b2Color(0.2, 0.2, 1)
 
 class Flock(gym.Env):
     name = "Flock v0"
@@ -22,59 +25,37 @@ class Flock(gym.Env):
     another object, it gets negative reward
     """
 
-    def __init__(self, render = False, n_agents = 10, actors = None, colors = None, time_limit = 60, hz = 60):
+    def __init__(self, n_agents = 10, actors = None, colors = None,
+                **kwargs):
         # super(World, self).__init__()
-        fwSettings.hz = hz
-        self.settings = fwSettings
-        if render:
-            from gym_macm.backends.pyglet_framework import PygletFramework as framework
-        else:
-            from gym_macm.backends.no_render import NoRender as framework
-        self.framework = framework(fwSettings)
+        self.settings = flockSettings(**kwargs)
+        self.framework = PygletFramework(self.settings) if self.settings.render else NoRender(self.settings)
         self.framework.env = self
         # Framework.__init__(self)
         self.done = False
         self.n_agents = n_agents
-
-        self.world_width = 30
-        self.world_height = 30
-        self.start_spread = 20
-        self.start_point = [0, 0]
-
-        self.time_limit = time_limit # in seconds
         self.time_passed = 0 # time passed in the env
-        self.target = b2Vec2((random.random()-0.5)*100, (random.random()-0.5)*100)
-        if render:
-            self.framework.gui_objects["target"] = {'shape': 'circle',
-                                                    'values': [self.target, 1, b2Color(1, 1, 1)]}
-        # game settings
-        circle = b2FixtureDef(
-            shape=b2CircleShape(radius=0.5
-                                ),
-            density=1,
-            friction=0.3
-            )
-        self.cooldown_atk = 1  # minimum time between consecutive attacks
-        self.cooldown_mov_penalty = 0.5 # movement speed penalty. Maybe due to attacking or getting hit
 
-        # Creating agents
+        self.target = b2Vec2((random.random()-0.5)*100, (random.random()-0.5)*100)
+        if self.settings.render:
+            self.framework.gui_objects["target"] = {'shape': 'circle',
+                                                    'values': [self.target, self.settings.reward_tol, b2Color(1, 1, 1)]}
+
         self.agents = []
         for i in range(self.n_agents[0]):
-            x = self.start_spread * (random.random() - 0.5) + self.start_point[0]
-            y = self.start_spread * (random.random() - 0.5) + self.start_point[1]
+            x = self.settings.start_spread * (random.random() - 0.5) + self.settings.start_point[0]
+            y = self.settings.start_spread * (random.random() - 0.5) + self.settings.start_point[1]
             angle = random.uniform(-1,1) * np.pi
-            agent = Agent(ID = i)
+            agent = Agent(self.settings, ID = i)
             if actors:
                 agent.actor = actors[i]
             if colors:
                 agent.color = colors[i]
             agent.body = self.framework.world.CreateDynamicBody(
-                fixtures=circle,
+                **self.settings.bodySettings,
                 position=(x, y),
                 angle=angle,
-                userData=agent,
-                linearDamping=5,
-                fixedRotation=True
+                userData=agent
             )
             self.agents.append(agent)
         self.create_space()
@@ -114,9 +95,9 @@ class Flock(gym.Env):
             angle = agent.body.angle
             c = 1 / np.sqrt(2) if ((actions[agent.id][0] != 1) and (actions[agent.id][1] != 1)) else 1
             x_force = (np.cos(angle)            * (actions[agent.id][0]-1) +
-                      np.cos(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force #* (1/self.settings.hz)
+                      np.cos(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force
             y_force = (np.sin(angle)            * (actions[agent.id][0]-1) +
-                      np.sin(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force #* (1/self.settings.hz)
+                      np.sin(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force
 
             agent.body.ApplyForce(force=(x_force, y_force), point=agent.body.position, wake=True)
 
@@ -126,7 +107,7 @@ class Flock(gym.Env):
         
         rewards = self.get_rewards()
         self.time_passed += (1/self.settings.hz)
-        if  (self.time_passed > self.time_limit):
+        if  (self.time_passed > self.settings.time_limit):
             self.done = True
 
         self.obs = self.get_obs()
@@ -147,19 +128,27 @@ class Flock(gym.Env):
                                                             ] * (len(self.agents)+1))})
              for agent in self.agents})
 
-    def get_rewards(self):
+    def get_rewards(self, mode = "linear"):
+        mode = "binary"
         rewards = {}
         for contact in self.framework.world.contacts:
             rewards[contact.fixtureA.body.userData.id] = -1
             rewards[contact.fixtureB.body.userData.id] = -1
+            if self.settings.render:
+                contact.fixtureA.body.userData.color = b2Color(1, 0.2, 0.2)
         for agent in self.agents:
             if agent.id not in rewards:
-                r = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
-                rewards[agent.id] = (-r/100) + 1
+                d = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
+                if mode=="linear":
+                    rewards[agent.id] = (-r/100) + 1
+                if mode=="binary":
+                    r = int(d < self.settings.reward_tol)
+                    rewards[agent.id] = r
+                    if self.settings.render:
+                        agent.color = self.color = b2Color(0.2, 0.2+0.8*r, 1-0.8*r)
         return rewards
 
     def get_obs(self):
-        mode = "cartesian" # or radial
         obs = {}
         for agent in self.agents:
             obs[agent.id] = {"nodes": []}
@@ -176,9 +165,9 @@ class Flock(gym.Env):
             rel_position = closest_agent.body.position - agent.body.position
             t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
             t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
-            if mode=="radial":
+            if self.settings.coord=="polar":
                 position = np.array([closest_dist,t])
-            if mode=="cartesian":
+            if self.settings.coord=="cartesian":
                 position = np.array([r,np.cos(t),np.sin(t)])
             obs[agent.id]["nodes"].append({"type": 0,
                                            "id": closest_agent.id,
@@ -188,9 +177,9 @@ class Flock(gym.Env):
             r = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
             t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
             t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
-            if mode == "radial":
+            if self.settings.coord == "polar":
                 position = np.array([r,t])
-            if mode=="cartesian":
+            if self.settings.coord == "cartesian":
                 position = np.array([r,np.cos(t),np.sin(t)])
 
             obs[agent.id]["nodes"].append({"type": 1,
@@ -203,8 +192,8 @@ class Flock(gym.Env):
         self.done = False
         for agent in self.agents:
             agent.reset()
-            x = self.start_spread*(random.random()-0.5) + self.start_point[0]
-            y = self.start_spread*(random.random()-0.5) + self.start_point[1]
+            x = self.settings.start_spread*(random.random()-0.5) + self.settings.start_point[0]
+            y = self.settings.start_spread*(random.random()-0.5) + self.settings.start_point[1]
             angle = random.uniform(-1, 1) * np.pi
             agent.body.position = (x, y)
             agent.body.angle = angle
@@ -236,7 +225,7 @@ class Flock(gym.Env):
         self.target = p
 
         self.framework.gui_objects["target"] = {'shape':'circle',
-                                                'values': [p,1,b2Color(1,1,1)]}
+                                                'values': [p,self.settings.reward_tol,b2Color(1,1,1)]}
 
     def quit(self):
         self.framework.quit()

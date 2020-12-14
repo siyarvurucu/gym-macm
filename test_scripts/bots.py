@@ -35,9 +35,10 @@ def circle(obs=None):
     else:
         return np.array([2, 1, 1, 0])
 
-def flock(obs):
+def flock(obs,
+          coord="polar"
+          ):
     # print(obs)
-    mode = "cartesian" # radial
     obs = list(obs.values())[0]
     targets = [node for node in obs["nodes"] if (node["type"]==1)]
     if targets:
@@ -48,10 +49,12 @@ def flock(obs):
         if closest["position"][0]<1:
             return idle()[:3]
         else:
-            if mode=="cartesian":
+            if len(closest["position"]) == 3:
+                coord = "cartesian"
+            if coord=="cartesian":
                 rotation = np.sign(closest["position"][2]) + 1
                 forward = int(closest["position"][1] > np.cos(np.pi/4)) + 1
-            if mode=="raidal":
+            if coord=="polar":
                 rotation = np.sign(closest["position"][1]) + 1
                 forward = int(np.abs(closest["position"][1]) < (np.pi / 4)) + 1
             return np.array([forward, 1, rotation])
