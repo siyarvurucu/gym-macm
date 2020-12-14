@@ -112,9 +112,10 @@ class MyModel_4(MessagePassing):
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset(self.rnn)
-        reset(self.msg)
-        reset(self.dec)
+        # reset(self.rnn)
+        # reset(self.msg)
+        # reset(self.dec)
+        self.apply(weights_init_normal)
 
     def get_empty_states(self, n_agents):
         # dims of rnn states = (num_layers, batch_size, features)
