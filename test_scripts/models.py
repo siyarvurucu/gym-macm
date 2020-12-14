@@ -156,12 +156,13 @@ class MyModel_4(MessagePassing):
         # below assumes:
         # each node receives same number of messages
         # target nodes (index) are sorted: [0,1,2.. or [0,0,1,1,2,2...
-        # BATCH
-        # index.view(80, 2).permute(1, 0).shape
-        # print(inputs)
-        # print(states)
+
+        h = states[:,0:1,:].permute(1, 0, 2) if states.device.__str__() == 'cpu' else \
+                states[:, 0:1, :].permute(1, 0, 2).contiguous()
+        c = states[:,1:2,:].permute(1, 0, 2) if states.device.__str__() == 'cpu' else \
+                states[:, 1:2, :].permute(1, 0, 2).contiguous()
         out, (hn, cn) = self.rnn(inputs.view(states.shape[0], -1, self.hsize).permute(1, 0, 2),
-                                 (states[:,0:1,:].permute(1, 0, 2),states[:,1:2,:].permute(1, 0, 2)))
+                                 (h,c))
         return out,(hn,cn)
 
 

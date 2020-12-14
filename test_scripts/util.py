@@ -51,7 +51,7 @@ def collect_data(model,
     obs = obs_to_graph(env.obs, device=device)
     # TODO: for model in models: multiple model training
     if model.has_states:
-        setattr(obs, model._get_name(), model.get_empty_states(n_agents[0]))
+        setattr(obs, model._get_name(), model.get_empty_states(n_agents[0]).to(device))
     observations.append(obs)
 
 
@@ -185,7 +185,7 @@ class GnnActor:
         self.action_size = 27
 
     def __call__(self, obs):
-        data = obs_to_graph(obs, complete=False)
+        data = obs_to_graph(obs, complete=False, device=self.device)
         if self.model.has_states:
             setattr(data, self.model._get_name(), self.state)
             out, self.state = self.model(data)
