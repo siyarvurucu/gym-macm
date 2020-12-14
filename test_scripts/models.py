@@ -38,8 +38,9 @@ class MyModel_2(MessagePassing):
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset(self.msg)
-        reset(self.dec)
+        # reset(self.msg)
+        # reset(self.dec)
+        self.apply(weights_init_normal)
 
     def forward(self, data, actor_node = None):  # x: Union[Tensor, PairTensor], edge_index: Adj, edge_attr: Tensor) -> Tensor:
         """"""
@@ -186,3 +187,17 @@ class FcLin(torch.nn.Module):
         self.fc1 = torch.nn.Linear(a, b)
     def forward(self, x):
         return self.fc1(x)
+
+
+def weights_init_normal(m):
+    '''Takes in a module and initializes all linear layers with weight
+       values taken from a normal distribution.'''
+
+    classname = m.__class__.__name__
+    # for every Linear layer in a model
+    if classname.find('Linear') != -1:
+        # y = m.in_features
+        # m.weight.data shoud be taken from a normal distribution
+        m.weight.data.normal_(0.0, 1 / 100)
+        # m.bias.data should be 0
+        m.bias.data.fill_(0)

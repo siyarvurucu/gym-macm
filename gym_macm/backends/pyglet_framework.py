@@ -507,7 +507,7 @@ class PygletWindow(pyglet.window.Window):
         self.test.updateProjection()
 
     def on_draw(self):
-        if self.test.env.record:
+        if self.settings.record:
             pyglet.image.get_buffer_manager().get_color_buffer(). \
                 save('imgs/' + str(self.frame_number) + '.png')
             self.frame_number += 1
@@ -638,7 +638,7 @@ class PygletFramework(FrameworkBase):
         self.world.renderer = self.renderer
         self._viewCenter = b2Vec2(0, 0)
         self._viewZoom = 2
-        self.groundbody = self.world.CreateBody()
+        # self.groundbody = self.world.CreateBody()
         self.gui_objects = {}
 
     def setCenter(self, value):
@@ -691,7 +691,7 @@ class PygletFramework(FrameworkBase):
             pyglet.clock.schedule_interval(
                 self.SimulationLoop, 1.0 / self.settings.hz)
 
-        # self.window.push_handlers(pyglet.window.event.WindowEventLogger())
+        self.window.push_handlers(pyglet.window.event.WindowEventLogger())
         # TODO: figure out why this is required
         self.window._enable_event_queue = False
         pyglet.app.run()
@@ -731,6 +731,11 @@ class PygletFramework(FrameworkBase):
 
         # Step the physics
         # self.Step(self.settings)
+        if self.settings.verbose_display:
+            for body in self.world.bodies:
+                x, y = self.ConvertWorldToScreen(body.position)
+                self.DrawStringAt(x-6, y-6, str(body.userData.id))
+
         self.env.step()
         self.renderer.static_batch.draw()
         self.renderer.batch.draw()
@@ -786,7 +791,7 @@ class PygletFramework(FrameworkBase):
 
     def Step(self, settings):
        super(PygletFramework, self).Step(settings)
-       
+
 
     def ConvertScreenToWorld(self, x, y):
         """
@@ -809,12 +814,26 @@ class PygletFramework(FrameworkBase):
 
         return p
 
+    def ConvertWorldToScreen(self, p):
+
+        ratio = float(self.window.width) / self.window.height
+        extents = b2Vec2(ratio * 25.0, 25.0)
+        extents *= self._viewZoom
+
+        lower = self._viewCenter - extents
+        upper = self._viewCenter + extents
+
+        x = self.window.width*(p[0]-lower.x) / (upper.x-lower.x)
+        y = self.window.height*(p[1] - lower.y) / (upper.y - lower.y)
+
+        return x,y
+
     def DrawStringAt(self, x, y, str, color=(229, 153, 153, 255)):
         """
         Draw some text, str, at screen coordinates (x, y).
         """
         pyglet.text.Label(str, font_name=self.fontname,
-                          font_size=self.fontsize, x=x, y=self.window.height - y,
+                          font_size=self.fontsize, x=x, y=y,
                           color=color, batch=self.renderer.batch, group=self.textGroup)
 
     def Print(self, str, color=(229, 153, 153, 255)):

@@ -75,14 +75,17 @@ def collect_data(model,
             agent_ids = obs.ids[obs.ids.lt(n_agents[0])]
             acts = {ID.item(): acts[i] for i, ID in enumerate(agent_ids)}
             # acts = {ID: acts[i] for i,ID in enumerate(obs.ids)}
+
             obs, rews = env.step(acts)
+            rewards.append(torch.tensor([rews[ID.item()] for ID in agent_ids], dtype=torch.float32,
+                                        device=device))
+
             obs = obs_to_graph(env.obs, device=device)
             new_agent_ids = obs.ids[obs.ids.lt(n_agents[0])]
             if model.has_states:
                 setattr(obs, model._get_name(), next_states)
             observations.append(obs)
-            rewards.append(torch.tensor([rews[ID] for ID in rews], dtype=torch.float32,
-                                        device=device))
+
 
 
     return observations, actions, rewards
@@ -226,10 +229,11 @@ import random
 class ReplayMemory(object):
 
     def __init__(self, capacity, normalize_rews=False,
-                 device='cpu'):
+                 device='cpu', testing = False):
         self.capacity = capacity
         self.memory = []
         self.normalize = normalize_rews
+
 
     def push(self, data):
         self.memory.extend(data)
@@ -251,7 +255,10 @@ class ReplayMemory(object):
         if self.normalize:
             r -= torch.mean(r)
             r /= torch.std(r)
-        return Bs0, Ba, Bs1, Br #, s0, a, s1, r
+        # if testing:
+        #     return Bs0, Ba, Bs1, Br, s0, a, s1, r
+        # else:
+        return Bs0, Ba, Bs1, Br
 
     def __len__(self):
         return len(self.memory)

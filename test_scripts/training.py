@@ -7,19 +7,22 @@ from plott import training_plotter
 
 N_AGENTS = 8
 N_TARGETS = 1
-TIME_LIMIT = 25
+TIME_LIMIT = 40
 HZ = 30 # fps of physics
 COORD = "cartesian"
+REW = "binary"
 # COORD = "polar"
 batch_size = 256
 
 # MODEL
 if COORD == "cartesian":
     edge_attr_size = 3
+if COORD == "polar":
+    edge_attr_size = 2
 device = 'cpu'
-Qnet = MyModel_2(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
+Qnet = MyModel_4(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
 # Qnet.load_state_dict(torch.load("saved_models/M2_dqn",map_location=torch.device('cpu')))
-Tnet = MyModel_2(edge_attr_size = edge_attr_size)
+Tnet = MyModel_4(edge_attr_size = edge_attr_size)
 Tnet.load_state_dict(Qnet.state_dict())
 
 
@@ -40,7 +43,8 @@ while len(dataloader)<10*batch_size:
                                          teacher_bot = bots.flock,
                                          device = device,
                                          hz = HZ,
-                                         coord = COORD)
+                                         coord = COORD, reward_mode = REW,
+                                         verbose_display = True)
     sasr = list(zip(obs[:-1], actions, obs[1:], rewards))
     dataloader.push(sasr)
 
@@ -54,7 +58,7 @@ if Qnet.has_states:
 #
 logger = {"pred_q":[0],"rewards":[0], "loss":[]}
 plotter = training_plotter(logger)
-eps_st, eps_end = 0.5, 0.7
+eps_st, eps_end = 0.3, 0.3
 gamma = 0.999
 train_steps = round(1e+7 / batch_size)
 # time_limit x hz determines the amount of collected data.
@@ -78,17 +82,17 @@ for i in range(train_steps):
 
     optimizer.zero_grad()
     loss.backward()
-    # for param in Qnet.parameters():
-    #     param.grad.data.clamp_(-1, 1)
+    for param in Qnet.parameters():
+        param.grad.data.clamp_(-1, 1)
     optimizer.step()
     Qnet.eval()
     # v_collect_x = int(collect_x + 10 * np.cos(2 * i * 2 * np.pi / 1000))
     if (i % collect_x) == 0:
         # print("Step: %d"%i)
         # print("collecting...")
-        epsilon = ((eps_end - eps_st) * i / train_steps) + eps_st
+        # epsilon = ((eps_end - eps_st) * i / train_steps) + eps_st
         # epsilon = 1-logger["rewards"][-1]
-        # epsilon = 0.3
+        epsilon = 0.3
         # vepsilon = epsilon + 0.3 * np.sin(i * 2 * np.pi / 1000)
         obs, acts, rews = collect_data(model=Qnet,
                                              n_agents=[N_AGENTS],
@@ -96,7 +100,8 @@ for i in range(train_steps):
                                              time_limit = TIME_LIMIT,
                                              device = device,
                                              hz = HZ,
-                                             coord = COORD)
+                                             coord = COORD,
+                                             reward_mode = REW)
         # TODO: sample from collected data
         sasr = list(zip(obs[:-1], acts, obs[1:], rews))
         dataloader.push(sasr)
@@ -108,9 +113,10 @@ for i in range(train_steps):
         print("Step: %d" % i)
         print(time.time()-st)
         print("Simulating at iter %d" % i)
+        torch.save(Qnet.state_dict(), "saved_models/recent")
         simulate(n_agents = [N_AGENTS],
                  actors = [bots.flock]+ [GnnActor(Qnet, epsilon = 0.05) for i in range(N_AGENTS-1)] ,
-                 time_limit=10, hz = HZ, coord=COORD,
+                 time_limit=15, hz = HZ, coord=COORD,
                  printModel="GNN v3", printIteration=i,
                  )
 
@@ -130,21 +136,3 @@ Qnet.eval()
 simulate(n_agents = [N_AGENTS],
          actors = [bots.flock]+ [GnnActor(Qnet, epsilon = 0.05) for i in range(N_AGENTS-1)] ,
          time_limit=10, Model = "GNN LSTM", Iteration = i)
-#
-# h0 = torch.zeros(8,32)
-# c0 = torch.ones(8,32)
-# h1 = 2*torch.ones(8,32)
-# c1 = 3*torch.ones(8,32)
-# h2 = 4*torch.ones(8,32)
-# c2 = 5*torch.ones(8,32)
-# ax = 1
-# s0 = torch.stack((h0,c0),axis=ax)
-# s1 = torch.stack((h1,c1),axis=ax)
-# s2 = torch.stack((h2,c2),axis=ax)
-# o0 = obs.clone()
-# o1 = obs.clone()
-# o2 = obs.clone()
-# o0.states = s0
-# o1.states = s1
-# o2.states = s2
-# b = Batch.from_data_list([o0,o1,o2])

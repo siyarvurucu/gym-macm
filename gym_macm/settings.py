@@ -113,13 +113,14 @@ class flockSettings(fwSettings):
         self.coord = "polar"
         self.time_limit = 60
         self.record = False
+        self.verbose_display = True
 
         self.world_width = 30
         self.world_height = 30
         self.start_spread = 20
         self.start_point = [0, 0]
         self.reward_mode = "binary"
-        self._reward_tol = 10
+        self._reward_tol = 7
         self.agent_rotation_speed = 0.8 * (2 * np.pi)
         self.agent_force = 20  # walk force
 

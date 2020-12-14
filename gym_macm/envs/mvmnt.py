@@ -15,7 +15,7 @@ class Agent:
         self.actor = actor
         self.rotation_speed = settings.agent_rotation_speed
         self.force = settings.agent_force
-        self.color = b2Color(0.2, 0.2, 1)
+        self.color = b2Color(0.4, 0.4, 0.6)
 
 class Flock(gym.Env):
     name = "Flock v0"
@@ -128,20 +128,22 @@ class Flock(gym.Env):
                                                             ] * (len(self.agents)+1))})
              for agent in self.agents})
 
-    def get_rewards(self, mode = "linear"):
-        mode = "binary"
+    def get_rewards(self):
         rewards = {}
         for contact in self.framework.world.contacts:
             rewards[contact.fixtureA.body.userData.id] = -1
             rewards[contact.fixtureB.body.userData.id] = -1
             if self.settings.render:
                 contact.fixtureA.body.userData.color = b2Color(1, 0.2, 0.2)
+                contact.fixtureB.body.userData.color = b2Color(1, 0.2, 0.2)
         for agent in self.agents:
             if agent.id not in rewards:
                 d = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
-                if mode=="linear":
-                    rewards[agent.id] = (-r/100) + 1
-                if mode=="binary":
+                if self.settings.reward_mode=="linear":
+                    rewards[agent.id] = (-d/35) + 1
+                    if self.settings.render:
+                        agent.color = self.color = b2Color(0.5, 0.5, 0.8)
+                if self.settings.reward_mode=="binary":
                     r = int(d < self.settings.reward_tol)
                     rewards[agent.id] = r
                     if self.settings.render:
