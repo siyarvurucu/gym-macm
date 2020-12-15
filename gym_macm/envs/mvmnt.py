@@ -3,8 +3,11 @@ from gym import spaces
 from gym_macm.settings import flockSettings
 from Box2D import (b2CircleShape, b2EdgeShape, b2FixtureDef,
                    b2PolygonShape, b2DistanceSquared, b2Color, b2Vec2)
-from gym_macm.backends.pyglet_framework import PygletFramework
 from gym_macm.backends.no_render import NoRender
+try:
+    from gym_macm.backends.pyglet_framework import PygletFramework
+except:
+    pass
 
 import random
 import numpy as np
