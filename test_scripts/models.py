@@ -8,23 +8,36 @@ from torch import Tensor, tanh
 import torch.nn.functional as F
 
 class MyModel_1(MessagePassing):
-    def __init__(self, mlp: Callable, aggr: str = 'add', **kwargs):
+    has_states = False  # Does model have states that should be saved in the dataset?
+
+    def __init__(self, hsize=64, action_size=27, msgsize = 16,
+                 edge_attr_size=2, node_attr_size=1,
+                 aggr: str = 'add', **kwargs):
         super(MyModel_1, self).__init__(aggr=aggr, **kwargs)
-        self.mlp = mlp
+        self.dec = Fc2(2*msgsize, hsize, action_size)
+        self.msg = Fc1(edge_attr_size + node_attr_size, msgsize)
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset(self.mlp)
-        
-    def forward(self, data):#x: Union[Tensor, PairTensor], edge_index: Adj, edge_attr: Tensor) -> Tensor:
+        # reset(self.msg)
+        # reset(self.dec)
+        self.apply(weights_init_normal)
+
+    def forward(self, data,
+                actor_node=None):  # x: Union[Tensor, PairTensor], edge_index: Adj, edge_attr: Tensor) -> Tensor:
         """"""
         # print(x)
         # propagate_type: (x: PairTensor)
-        return self.propagate(data.edge_index, x=data.x, edge_attr = data.edge_attr)
-    
+        out = self.propagate(data.edge_index, x=data.x, edge_attr=data.edge_attr)
+        return out
+
     def message(self, x_j: Tensor, edge_attr: Tensor) -> Tensor:
-        return self.mlp(torch.cat([x_j, edge_attr], dim=-1))
+        return self.msg(torch.cat([x_j, edge_attr], dim=-1))
         # return self.nn(torch.cat([x_i, x_j - x_i], dim=-1))
+    def aggregate(self, inputs: Tensor, index: Tensor,
+                  ptr: Optional[Tensor] = None,
+                  dim_size: Optional[int] = None) -> Tensor:
+        return self.dec(inputs.view(len(index.unique()), -1))
 
 
 class MyModel_2(MessagePassing):
@@ -33,8 +46,8 @@ class MyModel_2(MessagePassing):
                  edge_attr_size = 2, node_attr_size = 1,
                  aggr: str = 'add', **kwargs):
         super(MyModel_2, self).__init__(aggr=aggr, **kwargs)
-        self.dec = Fc2(32,hsize,action_size)
-        self.msg = Fc1(edge_attr_size+node_attr_size,32)
+        self.dec = Fc2(hsize,hsize,action_size)
+        self.msg = Fc1(edge_attr_size+node_attr_size,hsize)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -98,7 +111,7 @@ class MyModel_3(MessagePassing):
 
 #
 class MyModel_4(MessagePassing):
-    def __init__(self, isize=32, hsize=32,
+    def __init__(self, isize=16, hsize=16,
                  edge_attr_size = 2, node_attr_size = 1,
                  aggr = None, **kwargs):
         super(MyModel_4, self).__init__(aggr=aggr, **kwargs)
@@ -106,9 +119,10 @@ class MyModel_4(MessagePassing):
         # curret: batch_size 1 only. todo nodes_belong
         self.has_states = True
         self.hsize = hsize
+        self.isize = isize
         self.rnn = torch.nn.LSTM(isize, hsize, 1)
         self.msg = Fc1(node_attr_size+edge_attr_size ,isize)
-        self.dec = FcLin(hsize, 27)
+        self.dec = Fc2(2*isize,64, 27)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -140,7 +154,8 @@ class MyModel_4(MessagePassing):
         # torch.cat((hn,cn),axis=1) for single
         next_states = torch.cat((hn.permute(1, 0, 2), cn.permute(1, 0, 2)), axis=1)
         # next_states = torch.stack((hn.squeeze(),cn.squeeze()),axis=1)
-        return self.dec(out[-1]).squeeze(), next_states
+        out = torch.cat((out[0],out[1]),dim=1)
+        return self.dec(out).squeeze(), next_states
 
     def message(self, x_j: Tensor, edge_attr: Tensor) -> Tensor:
         out = self.msg(torch.cat([x_j, edge_attr], dim=-1))
@@ -162,7 +177,7 @@ class MyModel_4(MessagePassing):
                 states[:, 0:1, :].permute(1, 0, 2).contiguous()
         c = states[:,1:2,:].permute(1, 0, 2) if states.device.__str__() == 'cpu' else \
                 states[:, 1:2, :].permute(1, 0, 2).contiguous()
-        out, (hn, cn) = self.rnn(inputs.view(states.shape[0], -1, self.hsize).permute(1, 0, 2),
+        out, (hn, cn) = self.rnn(inputs.view(states.shape[0], -1, self.isize).permute(1, 0, 2),
                                  (h,c))
         return out,(hn,cn)
 
