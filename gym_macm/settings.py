@@ -124,6 +124,9 @@ class flockSettings(fwSettings):
         self.agent_rotation_speed = 0.8 * (2 * np.pi)
         self.agent_force = 20  # walk force
 
+        self.target_mindist = 25
+        self.target_maxdist = 60
+
         circle = b2FixtureDef(
             shape=b2CircleShape(radius=0.5
                                 ),

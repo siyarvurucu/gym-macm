@@ -111,7 +111,7 @@ class MyModel_3(MessagePassing):
 
 #
 class MyModel_4(MessagePassing):
-    def __init__(self, isize=16, hsize=16,
+    def __init__(self, isize=32, hsize=32,
                  edge_attr_size = 2, node_attr_size = 1,
                  aggr = None, **kwargs):
         super(MyModel_4, self).__init__(aggr=aggr, **kwargs)
@@ -122,7 +122,7 @@ class MyModel_4(MessagePassing):
         self.isize = isize
         self.rnn = torch.nn.LSTM(isize, hsize, 1)
         self.msg = Fc1(node_attr_size+edge_attr_size ,isize)
-        self.dec = Fc2(2*isize,64, 27)
+        self.dec = Fc2(isize,64, 27)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -154,9 +154,9 @@ class MyModel_4(MessagePassing):
         # torch.cat((hn,cn),axis=1) for single
         next_states = torch.cat((hn.permute(1, 0, 2), cn.permute(1, 0, 2)), axis=1)
         # next_states = torch.stack((hn.squeeze(),cn.squeeze()),axis=1)
-        out = torch.cat((out[0],out[1]),dim=1)
+        # out = torch.cat((out[0],out[1]),dim=1)
         # self.dec(torch.cat((hn, cn), dim=2).squeeze())
-        return self.dec(out).squeeze(), next_states
+        return self.dec(out[-1]).squeeze(), next_states
 
     def message(self, x_j: Tensor, edge_attr: Tensor) -> Tensor:
         out = self.msg(torch.cat([x_j, edge_attr], dim=-1))

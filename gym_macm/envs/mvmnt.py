@@ -39,7 +39,10 @@ class Flock(gym.Env):
         self.n_agents = n_agents
         self.time_passed = 0 # time passed in the env
 
-        self.target = b2Vec2((random.random()-0.5)*100, (random.random()-0.5)*100)
+        self.t_min, self.t_max = self.settings.target_mindist, self.settings.target_maxdist
+        rand_angle = 2 * math.pi * random.random()
+        rand_dist = self.t_min + random.random()*(self.t_max-self.t_min)
+        self.target = b2Vec2(rand_dist*np.cos(rand_angle), rand_dist*np.sin(rand_angle))
         if self.settings.render:
             self.framework.gui_objects["target"] = {'shape': 'circle',
                                                     'values': [self.target, self.settings.reward_tol, b2Color(1, 1, 1)]}
