@@ -155,6 +155,7 @@ class MyModel_4(MessagePassing):
         next_states = torch.cat((hn.permute(1, 0, 2), cn.permute(1, 0, 2)), axis=1)
         # next_states = torch.stack((hn.squeeze(),cn.squeeze()),axis=1)
         out = torch.cat((out[0],out[1]),dim=1)
+        # self.dec(torch.cat((hn, cn), dim=2).squeeze())
         return self.dec(out).squeeze(), next_states
 
     def message(self, x_j: Tensor, edge_attr: Tensor) -> Tensor:

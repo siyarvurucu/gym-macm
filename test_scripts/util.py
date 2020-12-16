@@ -193,7 +193,7 @@ class GnnActor:
         # env_to_graph = {graph_to_env[k]: k for k in graph_to_env}
         # my_id = next(iter(obs))
         else:
-            out = self.model(data)[0]
+            out = self.model(data)[0].squeeze()
         out = out.max(0)[1]
         if self.epsilon and random.random() < self.epsilon:
             # even if the action is random, should the state be updated normally

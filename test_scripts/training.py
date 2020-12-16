@@ -6,15 +6,17 @@ import time
 from plott import training_plotter
 from math import exp
 from torch.nn.functional import smooth_l1_loss
+exp_name = "lstm_t"
 N_AGENTS = 8
 N_TARGETS = 1
 TIME_LIMIT = 40
 HZ = 30 # fps of physics
 COORD = "cartesian"
 REW = "linear"
-CLAMP = True
+CLAMP = False
 # COORD = "polar"
 batch_size = 256
+teacher_bot = bots.flock
 
 # MODEL
 if COORD == "cartesian":
@@ -43,7 +45,7 @@ while len(dataloader)<10*batch_size:
                                          n_agents = [N_AGENTS],
                                          time_limit = TIME_LIMIT,
                                          epsilon = 1,
-                                         teacher_bot = bots.flock,
+                                         teacher_bot = teacher_bot,
                                          device = device,
                                          hz = HZ,
                                          coord = COORD, reward_mode = REW,
@@ -59,7 +61,7 @@ if Qnet.has_states:
     mask = 0 # uncomment if model has states
 # loader = iter(DataLoader(sasr, batch_size=batch_size, shuffle=False))
 #
-logger = {"pred_q":[0],"rewards":[0], "loss":[]}
+logger = {"Q value":[0],"Reward":[0], "Loss":[]}
 plotter = training_plotter(logger)
 
 gamma = 0.999
@@ -80,8 +82,12 @@ for i in range(train_steps):
     #     gamma = 0
     Qnet.train()
     states0, actions, states1, rewards = dataloader.sample(batch_size)
-    state_action_values = Qnet(states0).gather(1, actions.view(-1,1))
-    next_state_values = Tnet(states1).max(1)[0].detach()
+    if Qnet.has_states:
+        state_action_values = Qnet(states0)[0].gather(1, actions.view(-1,1))
+        next_state_values = Tnet(states1)[0].max(1)[0].detach()
+    else:
+        state_action_values = Qnet(states0).gather(1, actions.view(-1, 1))
+        next_state_values = Tnet(states1).max(1)[0].detach()
     # Compute the expected Q values
     expected_state_action_values = rewards + (next_state_values*gamma)
     loss = smooth_l1_loss(state_action_values, expected_state_action_values.unsqueeze(1))
@@ -104,13 +110,14 @@ for i in range(train_steps):
                         exp(-1. * i / eps_decay)
         # vepsilon = epsilon + 0.3 * np.sin(i * 2 * np.pi / 1000)
         obs, acts, rews = collect_data(model=Qnet,
-                                             n_agents=[N_AGENTS],
-                                             epsilon=epsilon,
-                                             time_limit = TIME_LIMIT,
-                                             device = device,
-                                             hz = HZ,
-                                             coord = COORD,
-                                             reward_mode = REW)
+                                         n_agents=[N_AGENTS],
+                                         epsilon=epsilon,
+                                         time_limit = TIME_LIMIT,
+                                         device = device,
+                                         teacher_bot = teacher_bot,
+                                         hz = HZ,
+                                         coord = COORD,
+                                         reward_mode = REW)
         # TODO: sample from collected data
         sasr = list(zip(obs[:-1], acts, obs[1:], rews))
         dataloader.push(sasr)
@@ -126,13 +133,13 @@ for i in range(train_steps):
         simulate(n_agents = [N_AGENTS],
                  actors = [bots.flock]+ [GnnActor(Qnet, epsilon = 0.05) for i in range(N_AGENTS-1)] ,
                  time_limit=15, hz = HZ, coord=COORD, reward_mode = REW,
-                 printModel="GNN v3", printIteration=i,
+                 printModel=exp_name, printIteration=i,
                  )
 
 
-    logger["pred_q"].append(torch.mean(next_state_values).item())
-    logger["rewards"].append(torch.mean(rewards).item())
-    logger["loss"].append(loss.item())
+    logger["Q value"].append(torch.mean(next_state_values).item())
+    logger["Reward"].append(torch.mean(rewards).item())
+    logger["Loss"].append(loss.item())
 
 
     if (i % plot_x) == 0:
@@ -145,5 +152,5 @@ Qnet.eval()
 simulate(n_agents = [N_AGENTS],
                  actors = [bots.flock]+ [GnnActor(Qnet, epsilon = 0.05) for i in range(N_AGENTS-1)] ,
                  time_limit=30, hz = HZ, coord=COORD, reward_mode = REW,
-                 printModel="GNN v3", printIteration=i,
+                 printModel=exp_name, printIteration=i,
                  )

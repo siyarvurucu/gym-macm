@@ -173,7 +173,7 @@ class Flock(gym.Env):
             if self.settings.coord=="polar":
                 position = np.array([closest_dist,t])
             if self.settings.coord=="cartesian":
-                position = np.array([r,np.cos(t),np.sin(t)])
+                position = np.array([closest_dist,np.cos(t),np.sin(t)])
             obs[agent.id]["nodes"].append({"type": 0,
                                            "id": closest_agent.id,
                                            "position": position})
