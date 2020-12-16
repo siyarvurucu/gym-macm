@@ -175,7 +175,7 @@ def obs_to_graph(obs, complete=True, device='cpu'):
 
 class GnnActor:
     def __init__(self, model, epsilon = None,
-                 device = 'cpu'):
+                 device = 'cpu', p2c = False):
         self.model = model
         if model.has_states:
             self.state = model.get_empty_states(1)
@@ -183,8 +183,14 @@ class GnnActor:
         self.epsilon = epsilon
         self.device = device
         self.action_size = 27
+        self.polar2cart = p2c
+        # self.cart2polar = c2p
 
     def __call__(self, obs):
+        if self.polar2cart:
+            for node in obs[next(iter(obs))]["nodes"]:
+                r,t = node["position"]
+                node["position"] = np.array([r,np.cos(t),np.sin(t)])
         data = obs_to_graph(obs, complete=False, device=self.device)
         if self.model.has_states:
             setattr(data, self.model._get_name(), self.state)
@@ -258,6 +264,7 @@ class ReplayMemory(object):
         # if testing:
         #     return Bs0, Ba, Bs1, Br, s0, a, s1, r
         # else:
+        # return Bs0, Ba, Bs1, Br, s0, a, s1, r
         return Bs0, Ba, Bs1, Br
 
     def __len__(self):

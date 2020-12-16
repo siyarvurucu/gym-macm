@@ -18,7 +18,11 @@ class Agent:
         self.actor = actor
         self.rotation_speed = settings.agent_rotation_speed
         self.force = settings.agent_force
+        self._color = b2Color(0.4, 0.4, 0.6)
         self.color = b2Color(0.4, 0.4, 0.6)
+
+    def reset_color(self):
+        self.color = self._color
 
 class Flock(gym.Env):
     name = "Flock v0"
@@ -40,7 +44,7 @@ class Flock(gym.Env):
         self.time_passed = 0 # time passed in the env
 
         self.t_min, self.t_max = self.settings.target_mindist, self.settings.target_maxdist
-        rand_angle = 2 * math.pi * random.random()
+        rand_angle = 2 * np.pi * random.random()
         rand_dist = self.t_min + random.random()*(self.t_max-self.t_min)
         self.target = b2Vec2(rand_dist*np.cos(rand_angle), rand_dist*np.sin(rand_angle))
         if self.settings.render:
@@ -56,7 +60,7 @@ class Flock(gym.Env):
             if actors:
                 agent.actor = actors[i]
             if colors:
-                agent.color = colors[i]
+                agent._color = colors[i]
             agent.body = self.framework.world.CreateDynamicBody(
                 **self.settings.bodySettings,
                 position=(x, y),
@@ -148,12 +152,12 @@ class Flock(gym.Env):
                 if self.settings.reward_mode=="linear":
                     rewards[agent.id] = (-d/35) + 1
                     if self.settings.render:
-                        agent.color = self.color = b2Color(0.5, 0.5, 0.8)
+                        agent.reset_color()
                 if self.settings.reward_mode=="binary":
                     r = int(d < self.settings.reward_tol)
                     rewards[agent.id] = r
-                    if self.settings.render:
-                        agent.color = self.color = b2Color(0.2, 0.2+0.8*r, 1-0.8*r)
+                    # if self.settings.render:
+                    #     agent.color = self.color = b2Color(0.2, 0.2+0.8*r, 1-0.8*r)
         return rewards
 
     def get_obs(self):

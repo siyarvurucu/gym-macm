@@ -13,7 +13,7 @@ TIME_LIMIT = 40
 HZ = 30 # fps of physics
 COORD = "cartesian"
 REW = "linear"
-CLAMP = False
+CLAMP = True
 # COORD = "polar"
 batch_size = 256
 teacher_bot = bots.flock
@@ -24,9 +24,9 @@ if COORD == "cartesian":
 if COORD == "polar":
     edge_attr_size = 2
 
-Qnet = MyModel_4(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
+Qnet = MyModel_1(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
 # Qnet.load_state_dict(torch.load("saved_models/M2_dqn",map_location=torch.device('cpu')))
-Tnet = MyModel_4(edge_attr_size = edge_attr_size)
+Tnet = MyModel_1(edge_attr_size = edge_attr_size)
 Tnet.load_state_dict(Qnet.state_dict())
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -114,7 +114,7 @@ for i in range(train_steps):
                                          epsilon=epsilon,
                                          time_limit = TIME_LIMIT,
                                          device = device,
-                                         teacher_bot = teacher_bot,
+                                         # teacher_bot = teacher_bot,
                                          hz = HZ,
                                          coord = COORD,
                                          reward_mode = REW)
@@ -125,7 +125,7 @@ for i in range(train_steps):
     if (i % update_target_x) == 0:
         Tnet.load_state_dict(Qnet.state_dict())
 
-    if (i % simulate_x) == 0:
+    if (i % simulate_x) == 0 and i > 0:
         print("Step: %d" % i)
         print(time.time()-st)
         print("Simulating at iter %d" % i)

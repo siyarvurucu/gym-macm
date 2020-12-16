@@ -46,8 +46,8 @@ class MyModel_2(MessagePassing):
                  edge_attr_size = 2, node_attr_size = 1,
                  aggr: str = 'add', **kwargs):
         super(MyModel_2, self).__init__(aggr=aggr, **kwargs)
-        self.dec = Fc2(hsize,hsize,action_size)
-        self.msg = Fc1(edge_attr_size+node_attr_size,hsize)
+        self.dec = Fc2(32,64,action_size)
+        self.msg = Fc1(edge_attr_size+node_attr_size,32)
         self.reset_parameters()
 
     def reset_parameters(self):
@@ -122,7 +122,9 @@ class MyModel_4(MessagePassing):
         self.isize = isize
         self.rnn = torch.nn.LSTM(isize, hsize, 1)
         self.msg = Fc1(node_attr_size+edge_attr_size ,isize)
-        self.dec = Fc2(isize,64, 27)
+        # self.dec = Fc2(isize,64, 27)
+        self.dec = FcLin(32, 27)
+
         self.reset_parameters()
 
     def reset_parameters(self):
