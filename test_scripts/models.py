@@ -60,26 +60,27 @@ class MyModel_2(MessagePassing):
         # print(x)
         # propagate_type: (x: PairTensor)
         out = self.propagate(data.edge_index, x=data.x, edge_attr=data.edge_attr)
-        return self.dec(out)
+        return self.dec(out)[data.edge_index[1].unique()]
 
     def message(self, x_j: Tensor, edge_attr: Tensor) -> Tensor:
         return self.msg(torch.cat([x_j, edge_attr], dim=-1))
         # return self.nn(torch.cat([x_i, x_j - x_i], dim=-1))
 
 class MyModel_3(MessagePassing):
-    def __init__(self, loc: Callable, dec: Callable, msg:Callable,
-                 final:Callable, aggr: str = 'add', **kwargs):
+    has_states = False
+    def __init__(self, hsize = 64, action_size = 27,
+                 edge_attr_size = 2, node_attr_size = 1,
+                 aggr: str = 'max', **kwargs):
         super(MyModel_3, self).__init__(aggr=aggr, **kwargs)
-        self.dec = dec
-        self.msg = msg
-        self.loc = loc
-        self.final = final
+        self.loc = Fc1(edge_attr_size + node_attr_size, 16)
+        # self.dec = Fc1(16,16)
+        self.msg = Fc1(32,64)
+        self.final = FcLin(64,action_size)
         self.mtype = "msg1"
         self.reset_parameters()
 
     def reset_parameters(self):
-        reset(self.msg)
-        reset(self.dec)
+        self.apply(weights_init_normal)
 
     def forward(self, data):  # x: Union[Tensor, PairTensor], edge_index: Adj, edge_attr: Tensor) -> Tensor:
         """"""
@@ -87,26 +88,20 @@ class MyModel_3(MessagePassing):
         # propagate_type: (x: PairTensor)
         self.mtype = "msg1"
         out = self.propagate(data.edge_index, x=data.x, edge_attr=data.edge_attr)
-        out = self.dec(out)
-        edge_index0 = data.edge_index[0][(data.edge_index[0][..., None] == torch.where(data.x==1)[0]).any(-1)]
-        edge_index1 = data.edge_index[1][(data.edge_index[0][..., None] == torch.where(data.x==1)[0]).any(-1)]
+        # out = self.dec(out)
+        edge_index0 = data.edge_index[0][(data.edge_index[0][..., None] != torch.where(data.x==1)[0]).all(-1)]
+        edge_index1 = data.edge_index[1][(data.edge_index[0][..., None] !=
+                                          torch.where(data.x==1)[0]).all(-1)]
         self.mtype = "msg2"
         out = self.propagate(torch.stack((edge_index0,edge_index1)), x=out)
 
-        return self.final(out)
+        return self.final(out)[data.edge_index[1].unique()]
 
     def message(self, x_i: Tensor, x_j: Tensor, edge_attr: Tensor = None) -> Tensor:
         if self.mtype == "msg1":
             return self.loc(torch.cat([x_j, edge_attr], dim=-1))
         if self.mtype == "msg2":
-            return self.msg(x_i + x_j)
-        # return self.nn(torch.cat([x_i, x_j - x_i], dim=-1))
-
-    def message(self, x_i: Tensor, x_j: Tensor, edge_attr: Tensor = None) -> Tensor:
-        if self.mtype == "msg1":
-            return self.loc(torch.cat([x_j, edge_attr], dim=-1))
-        if self.mtype == "msg2":
-            return self.msg(x_i + x_j)
+            return self.msg(torch.cat([x_i, x_j],dim=1))
         # return self.nn(torch.cat([x_i, x_j - x_i], dim=-1))
 
 #
@@ -183,6 +178,40 @@ class MyModel_4(MessagePassing):
         out, (hn, cn) = self.rnn(inputs.view(states.shape[0], -1, self.isize).permute(1, 0, 2),
                                  (h,c))
         return out,(hn,cn)
+
+class MyModel_5(MessagePassing):
+    has_states = False # Does model have states that should be saved in the dataset?
+    def __init__(self, hsize = 64, action_size = 27,
+                 edge_attr_size = 2, node_attr_size = 1,
+                 aggr = "max", **kwargs):
+        super(MyModel_5, self).__init__(aggr=aggr, **kwargs)
+        self.dec = Fc2(32,64,action_size)
+        self.msg = Fc1(edge_attr_size+node_attr_size+32,32)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        # reset(self.msg)
+        # reset(self.dec)
+        self.apply(weights_init_normal)
+
+    def forward(self, data, actor_node = None):  # x: Union[Tensor, PairTensor], edge_index: Adj, edge_attr: Tensor) -> Tensor:
+        """"""
+        # print(x)
+        # propagate_type: (x: PairTensor)
+        out = self.propagate(data.edge_index, x=data.x, edge_attr=data.edge_attr,
+                             states = getattr(data,self._get_name()))
+        out = self.dec(next_states)[data.edge_index[1].unique()]
+        # next_states = torch.cat((next_states, self.get_empty_states(data.num_nodes-next_states.shape[0]-1)))
+        return out, next_states
+
+    def message(self, x_j: Tensor, edge_attr: Tensor, states_i: Tensor) -> Tensor:
+        return self.msg(torch.cat([x_j, edge_attr], dim=-1))
+        # return self.nn(torch.cat([x_i, x_j - x_i], dim=-1))
+
+
+
+
+
 
 
 class Fc2(torch.nn.Module):

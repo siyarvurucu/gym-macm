@@ -15,8 +15,13 @@ COORD = "cartesian"
 REW = "linear"
 CLAMP = True
 # COORD = "polar"
-batch_size = 256
+dataset_sampling = "single steps"
+if dataset_sampling == "episodes":
+    batch_size = TIME_LIMIT * HZ
+else:
+    batch_size = 256
 teacher_bot = bots.flock
+
 
 # MODEL
 if COORD == "cartesian":
@@ -24,9 +29,9 @@ if COORD == "cartesian":
 if COORD == "polar":
     edge_attr_size = 2
 
-Qnet = MyModel_1(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
+Qnet = MyModel_3(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
 # Qnet.load_state_dict(torch.load("saved_models/M2_dqn",map_location=torch.device('cpu')))
-Tnet = MyModel_1(edge_attr_size = edge_attr_size)
+Tnet = MyModel_3(edge_attr_size = edge_attr_size)
 Tnet.load_state_dict(Qnet.state_dict())
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -39,8 +44,8 @@ optimizer = torch.optim.Adam(Qnet.parameters())
 
 # COLLECT
 
-dataloader = ReplayMemory(200000)
-while len(dataloader)<10*batch_size:
+dataloader = ReplayMemory(200000,sampling = dataset_sampling)
+while len(dataloader)<5*batch_size:
     obs, actions, rewards = collect_data(model = Qnet,
                                          n_agents = [N_AGENTS],
                                          time_limit = TIME_LIMIT,
@@ -70,7 +75,7 @@ eps_st, eps_end, eps_decay = 0.9, 0.05, train_steps/2
 # time_limit x hz determines the amount of collected data.
 # the constant at collect_x is the ratio (collected_sample / trained_sample)
 collect_x = round(10 * (TIME_LIMIT*HZ) / batch_size)
-update_target_x = int(1e+3 / batch_size)
+update_target_x = max(1,int(1e+3 / batch_size))
 simulate_x = round(3e+5 / batch_size)
 plot_x = round(0.5*1e+5 / batch_size)
 st = time.time()
@@ -140,8 +145,6 @@ for i in range(train_steps):
     logger["Q value"].append(torch.mean(next_state_values).item())
     logger["Reward"].append(torch.mean(rewards).item())
     logger["Loss"].append(loss.item())
-
-
     if (i % plot_x) == 0:
         plotter(logger)
 
@@ -154,3 +157,6 @@ simulate(n_agents = [N_AGENTS],
                  time_limit=30, hz = HZ, coord=COORD, reward_mode = REW,
                  printModel=exp_name, printIteration=i,
                  )
+torch.save(Qnet.state_dict(), "saved_models/recent")
+torch.save(optimizer.state_dict(), "saved_models/opt_recent")
+# eps_st, eps_end, eps_decay = 0.2, 0.05, train_steps/4
