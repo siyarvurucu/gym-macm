@@ -313,19 +313,16 @@ class FrameworkBase(b2ContactListener):
         Indicates that there was a left click at point p (world coordinates)
         with the left shift key being held down.
         """
-        self.mouseWorld = p
-
-        # if not self.mouseJoint:
-            # self.SpawnBomb(p)
         pass
 
     def MouseDown(self, p):
         """
         Indicates that there was a left click at point p (world coordinates)
         """
-        if self.mouseJoint is not None:
-            return
-        self.env.MouseDown(p)
+        # if self.mouseJoint is not None:
+        #     return
+        # self.env.MouseDown(p)
+        pass
 
     def MouseUp(self, p):
         """
@@ -337,21 +334,10 @@ class FrameworkBase(b2ContactListener):
         """
         Mouse moved to point p, in world coordinates.
         """
-        self.env.MouseMove(p)
+        # self.env.MouseMove(p)
         # self.mouseWorld = p
         # if self.mouseJoint:
         #     self.mouseJoint.target = p
-        pass
-
-
-
-    def LaunchRandomBomb(self):
-        """
-        Create a new bomb and launch it at the testbed.
-        """
-        # p = b2Vec2(b2Random(-15.0, 15.0), 30.0)
-        # v = -5.0 * p
-        # self.LaunchBomb(p, v)
         pass
 
     def SimulationLoop(self):
@@ -359,18 +345,6 @@ class FrameworkBase(b2ContactListener):
         The main simulation loop. Don't override this, override Step instead.
         """
 
-        # Reset the text line to start the text from the top
-        self.textLine = self.TEXTLINE_START
-
-        # Draw the name of the test running
-        # self.Print(self.name, (127, 127, 255))
-
-        # if self.description:
-        #     # Draw the name of the test running
-        #     for s in self.description.split('\n'):
-        #         self.Print(s, (127, 255, 127))
-
-        # Do the main physics step
         self.Step(self.settings)
 
     def ConvertScreenToWorld(self, x, y):
@@ -463,23 +437,6 @@ class FrameworkBase(b2ContactListener):
         Callback indicating 'key' has been released.
         """
         pass
-
-
-
-#
-# def main(test_class):
-#     """
-#     Loads the test class and executes it.
-#     """
-#     print("Loading %s..." % test_class.name)
-#     test = test_class()
-#     if fwSettings.onlyInit:
-#         return
-#     # for i in range(100):
-#     #     test.Step(test.settings)
-#     # print("done")
-#     test.run()
-
 
 if __name__ == '__main__':
     print('Please run one of the examples directly. This is just the base for '

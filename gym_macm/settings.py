@@ -110,22 +110,19 @@ from Box2D import b2FixtureDef, b2CircleShape
 class flockSettings(fwSettings):
     def __init__(self, **kwargs):
         super(flockSettings, self).__init__()
-        self.coord = "polar"
-        self.time_limit = 60
+
+        # display
+        self.render = False
         self.record = False
+        self.record_dir = "../imgs/"
         self.verbose_display = True
 
-        self.world_width = 30
-        self.world_height = 30
+        # environment
         self.start_spread = 20
         self.start_point = [0, 0]
-        self.reward_mode = "binary"
-        self._reward_tol = 7
         self.agent_rotation_speed = 0.8 * (2 * np.pi)
-        self.agent_force = 20  # walk force
-
-        self.target_mindist = 25
-        self.target_maxdist = 60
+        self.agent_force = 20
+        self.time_limit = 60
 
         circle = b2FixtureDef(
             shape=b2CircleShape(radius=0.5
@@ -133,10 +130,19 @@ class flockSettings(fwSettings):
             density=1,
             friction=0.3
         )
-        self.bodySettings = {"fixtures":circle, "linearDamping":5, "fixedRotation":True}
+        self.bodySettings = {"fixtures": circle, "linearDamping": 5, "fixedRotation": True}
+
+        # task
+        self.reward_mode = "binary"
+        self._reward_radius = 7
+        self.target_mindist = 25
+        self.target_maxdist = 60
+        self.coord = "polar"
+
         for kw in kwargs:
             setattr(self,kw,kwargs[kw])
 
-        self.reward_tol =  self._reward_tol if self.reward_mode == "binary" else 1
+        self.reward_radius =  self._reward_radius if self.reward_mode == "binary" else 1
+
 
 

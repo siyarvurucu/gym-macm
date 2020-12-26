@@ -6,7 +6,7 @@ import time
 from plott import training_plotter
 from math import exp
 from torch.nn.functional import smooth_l1_loss
-exp_name = "lstm_t"
+exp_name = "model2_max"
 N_AGENTS = 8
 N_TARGETS = 1
 TIME_LIMIT = 40
@@ -30,7 +30,7 @@ if COORD == "polar":
     edge_attr_size = 2
 
 Qnet = MyModel_3(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
-# Qnet.load_state_dict(torch.load("saved_models/M2_dqn",map_location=torch.device('cpu')))
+# Qnet.load_state_dict(torch.load("saved_models/recent",map_location=torch.device('cpu')))
 Tnet = MyModel_3(edge_attr_size = edge_attr_size)
 Tnet.load_state_dict(Qnet.state_dict())
 
@@ -40,7 +40,7 @@ Qnet.to(device)
 Tnet.to(device)
 optimizer = torch.optim.Adam(Qnet.parameters())
 # optimizer = torch.optim.RMSprop(Qnet.parameters())
-# optimizer.load_state_dict(torch.load("saved_models/opt_M2_dqn"))
+# optimizer.load_state_dict(torch.load("saved_models/opt_recent"))
 
 # COLLECT
 
@@ -75,7 +75,7 @@ eps_st, eps_end, eps_decay = 0.9, 0.05, train_steps/2
 # time_limit x hz determines the amount of collected data.
 # the constant at collect_x is the ratio (collected_sample / trained_sample)
 collect_x = round(10 * (TIME_LIMIT*HZ) / batch_size)
-update_target_x = max(1,int(1e+3 / batch_size))
+update_target_x = max(1,int(5e+3 / batch_size))
 simulate_x = round(3e+5 / batch_size)
 plot_x = round(0.5*1e+5 / batch_size)
 st = time.time()
@@ -135,6 +135,7 @@ for i in range(train_steps):
         print(time.time()-st)
         print("Simulating at iter %d" % i)
         torch.save(Qnet.state_dict(), "saved_models/recent")
+        torch.save(optimizer.state_dict(), "saved_models/opt_recent")
         simulate(n_agents = [N_AGENTS],
                  actors = [bots.flock]+ [GnnActor(Qnet, epsilon = 0.05) for i in range(N_AGENTS-1)] ,
                  time_limit=15, hz = HZ, coord=COORD, reward_mode = REW,

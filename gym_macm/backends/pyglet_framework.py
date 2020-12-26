@@ -37,7 +37,7 @@ You can easily add your own tests based on test_empty.
 """
 import string
 import numpy as np
-
+import os
 import pyglet
 from pyglet import gl
 
@@ -507,9 +507,9 @@ class PygletWindow(pyglet.window.Window):
         self.test.updateProjection()
 
     def on_draw(self):
-        if self.settings.record:
+        if self.test.settings.record:
             pyglet.image.get_buffer_manager().get_color_buffer(). \
-                save('imgs/' + str(self.frame_number) + '.png')
+                save(self.test.settings.record_dir + str(self.frame_number) + '.png')
             self.frame_number += 1
         pass
 
@@ -526,7 +526,7 @@ class PygletWindow(pyglet.window.Window):
             if modifiers & pyglet.window.key.MOD_SHIFT:
                 self.test.ShiftMouseDown(p)
             else:
-                self.test.MouseDown(p)
+                self.test.env.MouseDown(p)
         elif button == pyglet.window.mouse.MIDDLE:
             pass
 
@@ -545,9 +545,9 @@ class PygletWindow(pyglet.window.Window):
         Mouse scrollwheel used
         """
         if scroll_y < 0:
-            self.test.viewZoom *= 1.1
+            self.test.viewZoom *= 1.05
         elif scroll_y > 0:
-            self.test.viewZoom /= 1.1
+            self.test.viewZoom /= 1.05
 
     def on_mouse_drag(self, x, y, dx, dy, buttons, modifiers):
         """
@@ -626,6 +626,7 @@ class PygletFramework(FrameworkBase):
         self.window.height = 960
 
         # Initialize the text display group
+        self._textLine = 30
         self.textGroup = grText(self.window)
 
         # Load the font and record the screen dimensions
@@ -640,6 +641,7 @@ class PygletFramework(FrameworkBase):
         self._viewZoom = 2
         # self.groundbody = self.world.CreateBody()
         self.gui_objects = {}
+
 
     def setCenter(self, value):
         """
@@ -696,6 +698,10 @@ class PygletFramework(FrameworkBase):
         self.window._enable_event_queue = False
         pyglet.app.run()
 
+        if self.settings.record:
+            rec_dir = self.settings.record_dir
+            os.system("ffmpeg -framerate 60 -pattern_type sequence -start_number 120 "
+                      f"-i '{rec_dir}%d.png' -r 15 -vf scale=512:-1 {rec_dir}out.gif")
         self.world.contactListener = None
         self.world.destructionListener = None
         self.world.renderer = None
@@ -724,7 +730,7 @@ class PygletFramework(FrameworkBase):
         self.renderer.batch = pyglet.graphics.Batch()
 
         # Reset the text position
-        self.textLine = 15
+        self.textLine = self._textLine
 
         # Draw the title of the test at the top
         # self.Print(self.name)
@@ -732,9 +738,11 @@ class PygletFramework(FrameworkBase):
         # Step the physics
         # self.Step(self.settings)
         if self.settings.verbose_display:
+            self.Print("Time: %.2f" %self.env.time_passed, static=False)
             for body in self.world.bodies:
                 x, y = self.ConvertWorldToScreen(body.position)
                 self.DrawStringAt(x-6, y-6, str(body.userData.id))
+
 
         self.env.step()
         self.renderer.static_batch.draw()
@@ -836,15 +844,22 @@ class PygletFramework(FrameworkBase):
                           font_size=self.fontsize, x=x, y=y,
                           color=color, batch=self.renderer.batch, group=self.textGroup)
 
-    def Print(self, str, color=(229, 153, 153, 255)):
+    def Print(self, str, color=(229, 153, 153, 255), static = True):
         """
         Draw some text, str, at screen coordinates (x, y).
         """
+        batch = self.renderer.static_batch if static else self.renderer.batch
+
+
         pyglet.text.Label(str, font_name=self.fontname,
                           font_size=self.fontsize, x=5, y=self.window.height -
-                          self.textLine, color=color, batch=self.renderer.static_batch,
+                          self.textLine, color=color, batch=batch,
                           group=self.textGroup)
         self.textLine += self.fontsize + 3
+
+        if static:
+            self._textLine += self.fontsize + 3
+
 
     def Keyboard(self, key):
         """

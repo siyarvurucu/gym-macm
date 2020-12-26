@@ -34,23 +34,24 @@ class Flock(gym.Env):
 
     def __init__(self, n_agents = 10, actors = None, colors = None,
                 **kwargs):
-        # super(World, self).__init__()
         self.settings = flockSettings(**kwargs)
         self.framework = PygletFramework(self.settings) if self.settings.render else NoRender(self.settings)
         self.framework.env = self
-        # Framework.__init__(self)
         self.done = False
         self.n_agents = n_agents
-        self.time_passed = 0 # time passed in the env
+        self.time_passed = 0
 
+        # create random target location
         self.t_min, self.t_max = self.settings.target_mindist, self.settings.target_maxdist
         rand_angle = 2 * np.pi * random.random()
         rand_dist = self.t_min + random.random()*(self.t_max-self.t_min)
         self.target = b2Vec2(rand_dist*np.cos(rand_angle), rand_dist*np.sin(rand_angle))
         if self.settings.render:
             self.framework.gui_objects["target"] = {'shape': 'circle',
-                                                    'values': [self.target, self.settings.reward_tol, b2Color(1, 1, 1)]}
+                                                    'values': [self.target, self.settings.reward_radius, b2Color(1, 1, 1)]}
 
+
+        # create agents
         self.agents = []
         for i in range(self.n_agents[0]):
             x = self.settings.start_spread * (random.random() - 0.5) + self.settings.start_point[0]
@@ -70,13 +71,11 @@ class Flock(gym.Env):
             self.agents.append(agent)
         self.create_space()
         self.create_space_flag = False
-
         self.obs = self.get_obs()
 
     def step(self, actions=None):
 
-        if self.done: # "Episode is finished."
-            # print("Episode is finished.")
+        if self.done: # Episode is finished.
             self.quit() # TODO: is quit() necessary?
 
         if actions==None:
@@ -89,19 +88,19 @@ class Flock(gym.Env):
 
         assert self.action_space.contains(actions)
 
-        # Agent actions
+        # Agent actions: 3 Discrete in (0,1,2)
         for agent in self.agents:
-                # 0,1,2 = CW, NOOP, CCW
-            # if actions[agent.id][2] != 1:
-            #     print(agent.direction)
 
-            # Rotation
+            #
+            # Rotation: 0,1,2 = CW, NOOP, CCW
             agent.body.angle = (agent.body.angle + (actions[agent.id][2]-1) *
                                 agent.rotation_speed * (1/self.settings.hz))
             if np.abs(agent.body.angle) > np.pi:
                 agent.body.angle -= np.sign(agent.body.angle) * (2 * np.pi)
 
             # Movement
+            # 0,1,2 = BACKWARD, NOOP, FORWARD
+            # 0,1,2 = BACKWARD, NOOP, FORWARD
             angle = agent.body.angle
             c = 1 / np.sqrt(2) if ((actions[agent.id][0] != 1) and (actions[agent.id][1] != 1)) else 1
             x_force = (np.cos(angle)            * (actions[agent.id][0]-1) +
@@ -111,8 +110,7 @@ class Flock(gym.Env):
 
             agent.body.ApplyForce(force=(x_force, y_force), point=agent.body.position, wake=True)
 
-
-        # super(World, self).Step(self.settings)
+        # physics and rendering
         self.framework.Step(self.settings)
         
         rewards = self.get_rewards()
@@ -122,7 +120,7 @@ class Flock(gym.Env):
 
         self.obs = self.get_obs()
 
-        return self.obs, rewards # s(t+1), r(t)
+        return self.obs, rewards
 
     def create_space(self):
         self.action_space = spaces.Dict({agent.id: spaces.MultiDiscrete([3, 3, 3])
@@ -154,13 +152,13 @@ class Flock(gym.Env):
                     if self.settings.render:
                         agent.reset_color()
                 if self.settings.reward_mode=="binary":
-                    r = int(d < self.settings.reward_tol)
+                    r = int(d < self.settings.reward_radius)
                     rewards[agent.id] = r
-                    # if self.settings.render:
-                    #     agent.color = self.color = b2Color(0.2, 0.2+0.8*r, 1-0.8*r)
         return rewards
 
     def get_obs(self):
+        # obs of an agent: relative locations of
+        # closest agent and the target
         obs = {}
         for agent in self.agents:
             obs[agent.id] = {"nodes": []}
@@ -211,6 +209,8 @@ class Flock(gym.Env):
             agent.body.angle = angle
         self.create_space()
 
+    def run(self):
+        self.framework.run()
 
     def ShapeDestroyed(self, shape):
         """
@@ -237,7 +237,7 @@ class Flock(gym.Env):
         self.target = p
 
         self.framework.gui_objects["target"] = {'shape':'circle',
-                                                'values': [p,self.settings.reward_tol,b2Color(1,1,1)]}
+                                                'values': [p,self.settings.reward_radius,b2Color(1,1,1)]}
 
     def quit(self):
         self.framework.quit()

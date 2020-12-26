@@ -21,7 +21,7 @@ def simulate(n_agents=[3], actors=bots.flock,
     env.framework.Print(env.name)
     env.framework.updateProjection()
     for kw in pr_kwargs:
-        env.framework.Print(str(kw)+": "+str(pr_kwargs[kw]))
+        env.framework.Print(str(kw)+": "+str(pr_kwargs[kw]), static = True)
     env.framework.run()
 
 
@@ -40,8 +40,7 @@ def collect_data(model,
                  During inference, actors keep track of their states already so no need to write it
                  into data.
             '''
-    render = False
-    env = gym.make("gym_macm:cm-flock-v0", render=render,
+    env = gym.make("gym_macm:cm-flock-v0",
                    n_agents=n_agents, actors=None, **kwargs)
 
 
@@ -114,22 +113,6 @@ def obs_to_graph(obs, complete=True, device='cpu'):
             edge_target.append(id_to_graph_ind[node_target_id])
             edge_attr.append(node_source["position"])
 
-        # edge_source.append(int(closest_node0["id"]))
-        # edge_target.append(int(node_target))
-        # edge_attr.append(closest_node0["position"])
-        # x[closest_node0["id"]] = closest_node0["type"]
-        # ids[closest_node0["id"]] = int(closest_node0["id"])
-
-    # if complete:
-    #     # hardcoded. # of agents + # of targets. TODO
-    #     ids = [i for i in range(len(obs)+1)]
-    #     x = [0]*len(obs) + [1]
-    # else:
-    #     edge_source, edge_target, graph_to_ext = reduce_node_indices(edge_source,
-    #                                                                  edge_target)
-    #     x = [x[graph_to_ext[i]] for i in graph_to_ext]
-    #     ids = [ids[graph_to_ext[i]] for i in graph_to_ext]
-
     edge_index = torch.tensor([edge_source, edge_target], dtype=torch.long)
     x = torch.tensor(x, dtype=torch.float).view(-1,1)
     ids = torch.tensor([i for i in id_to_graph_ind], dtype=torch.int16)
@@ -140,38 +123,6 @@ def obs_to_graph(obs, complete=True, device='cpu'):
         data.to(device)
 
     return data
-
-# def reduce_node_indices(u, v):
-#     '''
-#     :param u: source node indices
-#     :param v: target node indices
-#     :return: reduced node indices (u, v) and dict to map them back to environment
-#
-#     Models receive partial observation if they do not control all agents.
-#     This function reduces the indices. (1,3,4,6,9) --> (1,2,3,4,5), {2:'6', 5:'9'}
-#     '''
-#
-#     uv = np.array(u + v)
-#     u = np.array(u)
-#     v = np.array(v)
-#     c = 0
-#     uuv = np.unique(uv)
-#     graph_to_external = {}
-#     for i in uuv:
-#         while c in uuv:
-#             graph_to_external[c] = str(c)
-#             c += 1
-#         if c > max(uuv):
-#             break
-#         if i >= len(uuv):
-#             graph_to_external[c] = str(i)
-#             u[u == i] = c
-#             v[v == i] = c
-#             c += 1
-#         else:
-#             graph_to_external[i] = str(i)
-#     return u, v, graph_to_external
-
 
 class GnnActor:
     def __init__(self, model, epsilon = None,
