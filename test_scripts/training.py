@@ -29,9 +29,9 @@ if COORD == "cartesian":
 if COORD == "polar":
     edge_attr_size = 2
 
-Qnet = MyModel_3(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
+Qnet = MyModel_1(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
 # Qnet.load_state_dict(torch.load("saved_models/recent",map_location=torch.device('cpu')))
-Tnet = MyModel_3(edge_attr_size = edge_attr_size)
+Tnet = MyModel_1(edge_attr_size = edge_attr_size)
 Tnet.load_state_dict(Qnet.state_dict())
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -75,7 +75,7 @@ eps_st, eps_end, eps_decay = 0.9, 0.05, train_steps/2
 # time_limit x hz determines the amount of collected data.
 # the constant at collect_x is the ratio (collected_sample / trained_sample)
 collect_x = round(10 * (TIME_LIMIT*HZ) / batch_size)
-update_target_x = max(1,int(5e+3 / batch_size))
+update_target_x = max(1,int(2e+3 / batch_size))
 simulate_x = round(3e+5 / batch_size)
 plot_x = round(0.5*1e+5 / batch_size)
 st = time.time()

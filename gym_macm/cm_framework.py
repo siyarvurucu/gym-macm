@@ -319,10 +319,9 @@ class FrameworkBase(b2ContactListener):
         """
         Indicates that there was a left click at point p (world coordinates)
         """
-        # if self.mouseJoint is not None:
-        #     return
-        # self.env.MouseDown(p)
-        pass
+        if self.mouseJoint is not None:
+            return
+        self.env.MouseDown(p)
 
     def MouseUp(self, p):
         """
@@ -334,7 +333,7 @@ class FrameworkBase(b2ContactListener):
         """
         Mouse moved to point p, in world coordinates.
         """
-        # self.env.MouseMove(p)
+        self.env.MouseMove(p)
         # self.mouseWorld = p
         # if self.mouseJoint:
         #     self.mouseJoint.target = p

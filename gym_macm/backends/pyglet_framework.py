@@ -526,7 +526,7 @@ class PygletWindow(pyglet.window.Window):
             if modifiers & pyglet.window.key.MOD_SHIFT:
                 self.test.ShiftMouseDown(p)
             else:
-                self.test.env.MouseDown(p)
+                self.test.MouseDown(p)
         elif button == pyglet.window.mouse.MIDDLE:
             pass
 
