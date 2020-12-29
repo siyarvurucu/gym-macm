@@ -15,11 +15,7 @@ COORD = "cartesian"
 REW = "linear"
 CLAMP = True
 # COORD = "polar"
-dataset_sampling = "single steps"
-if dataset_sampling == "episodes":
-    batch_size = TIME_LIMIT * HZ
-else:
-    batch_size = 256
+batch_size = 256
 teacher_bot = bots.flock
 
 
@@ -44,8 +40,8 @@ optimizer = torch.optim.Adam(Qnet.parameters())
 
 # COLLECT
 
-dataloader = ReplayMemory(200000,sampling = dataset_sampling)
-while len(dataloader)<5*batch_size:
+dataloader = ReplayMemory(200000)
+while len(dataloader)<10*batch_size:
     obs, actions, rewards = collect_data(model = Qnet,
                                          n_agents = [N_AGENTS],
                                          time_limit = TIME_LIMIT,
@@ -75,7 +71,7 @@ eps_st, eps_end, eps_decay = 0.9, 0.05, train_steps/2
 # time_limit x hz determines the amount of collected data.
 # the constant at collect_x is the ratio (collected_sample / trained_sample)
 collect_x = round(10 * (TIME_LIMIT*HZ) / batch_size)
-update_target_x = max(1,int(2e+3 / batch_size))
+update_target_x = int(1e+3 / batch_size)
 simulate_x = round(3e+5 / batch_size)
 plot_x = round(0.5*1e+5 / batch_size)
 st = time.time()

@@ -184,47 +184,33 @@ import random
 
 class ReplayMemory(object):
 
-    def __init__(self, capacity, normalize_rews = False,
-                 sampling = "single steps", device='cpu'):
+    def __init__(self, capacity, normalize_rews=False,
+                 device='cpu', testing = False):
         self.capacity = capacity
         self.memory = []
         self.normalize = normalize_rews
-        self.ep_idx = [0]
-        self.sampling = sampling
+
 
     def push(self, data):
         self.memory.extend(data)
-        overflow = len(self.memory) - self.capacity
-        if overflow > 0:
-            self.ep_idx = [idx-overflow for idx in self.ep_idx if idx>=overflow]
+        if len(self.memory) > self.capacity:
             self.memory = self.memory[-self.capacity:]
-        self.ep_idx.append(len(self.memory))
 
     def sample(self, batch_size):
-        if self.sampling == "single steps":
-            s0, a, s1, r = zip(*random.sample(self.memory, batch_size))
-            if batch_size != 1:
-                Bs0 = Batch.from_data_list(s0)
-                Bs1 = Batch.from_data_list(s1)
-                Ba = torch.cat(a)
-                Br = torch.cat(r)
-            else:
-                s0 = s0[0]
-                s1 = s1[0]
-                a = a[0]
-                r = r[0]
-            if self.normalize:
-                r -= torch.mean(r)
-                r /= torch.std(r)
-        if self.sampling == "episodes":
-            idx = random.randint(1, len(self.ep_idx)-1)
-            ep_b, ep_e = self.ep_idx[idx-1], self.ep_idx[idx]
-            s0, a, s1, r = zip(*self.memory[ep_b:ep_e])
+        s0, a, s1, r = zip(*random.sample(self.memory, batch_size))
+        if batch_size != 1:
             Bs0 = Batch.from_data_list(s0)
             Bs1 = Batch.from_data_list(s1)
             Ba = torch.cat(a)
             Br = torch.cat(r)
-
+        else:
+            s0 = s0[0]
+            s1 = s1[0]
+            a = a[0]
+            r = r[0]
+        if self.normalize:
+            r -= torch.mean(r)
+            r /= torch.std(r)
         # if testing:
         #     return Bs0, Ba, Bs1, Br, s0, a, s1, r
         # else:
