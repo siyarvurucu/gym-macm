@@ -2,7 +2,7 @@ There are two ways to run environments
 
 1) Providing actions for all agents at each time step 
 Environments cannot be rendered in real-time. This way is suited for training or sample collection.
-´´´
+```python
 import gym  
 n_agents = [4]  
 env = gym.make("gym_macm:cm-flock-v0", n_agents=n_agents)  
@@ -12,11 +12,11 @@ while not env.done:
     for agent in env.agents:  
         actions[agent.id] = myActor(obs[agent.id])  
     obs, rewards = env.step(actions)  
-´´´  
+```
 
 2) Providing actors for each agent at the creation of the environment
 
-´´´
+```python
 from Box2D import b2Color  
 n_agents = [4]  
 actors = [myActor1()] * 2 + [myActor2()] * 2  
@@ -26,7 +26,7 @@ env = gym.make("gym_macm:cm-flock-v0",
                 n_agents = n_agents, actors = actors, colors = colors,  
                 render = True, verbose_display = True)  
 env.run()  
-´´´
+```
 
 Flocking
 -----
