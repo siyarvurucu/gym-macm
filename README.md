@@ -37,7 +37,7 @@ Agents are rewarded with -1 if they collide with another object.
 
 Each agent observe relative locations of the target and closest of the remaining agents. 
 
-![Alt Text](imgs/out.gif)
+![Flock](imgs/out.gif)
 
 Combat
 -----
