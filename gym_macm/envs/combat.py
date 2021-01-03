@@ -59,10 +59,10 @@ class TDM(gym.Env):
 
     def __init__(self, render = "False",
                  n_agents = [1,1],
-                 actors = None,
-                 time_limit = 60):
+                 actors = None, colors = None,
+                 **kwargs):
         # super(World, self).__init__()
-        self.settings = fwSettings
+        self.settings = combatSettings(**kwargs)
         if render:
             from gym_macm.backends.pyglet_framework import PygletFramework as framework
         else:
@@ -75,18 +75,7 @@ class TDM(gym.Env):
         self.n_agents = n_agents
         self.world_width = 30
         self.world_height = 30
-        self.time_limit = time_limit # in seconds
         self.time_passed = 0 # time passed in the env
-
-        # game settings
-        circle = b2FixtureDef(
-            shape=b2CircleShape(radius=0.5
-                                ),
-            density=1,
-            friction=0.3
-            )
-        self.cooldown_atk = 1  # minimum time between consecutive attacks
-        self.cooldown_mov_penalty = 0.5 # movement speed penalty. Maybe due to attacking or getting hit
 
         # Creating agents
         self.agents = []
@@ -95,14 +84,16 @@ class TDM(gym.Env):
                 x = random.random() * (i + self.world_width / 2)
                 y =  random.random() * self.world_height
                 angle = random.uniform(-1,1) * np.pi
-                agent = Agent(team=i, ID = str(i) + str(j), actor = actors[i][j])
+                agent = Agent(team=i, ID = str(i) + str(j))
+                if actors:
+                    agent.actor = actors[i][j]
+                if colors:
+                    agent._color = colors[i]
                 agent.body = self.framework.world.CreateDynamicBody(
-                    fixtures=circle,
+                    **self.settings.bodySettings,
                     position=(x, y),
                     angle=angle,
-                    userData=agent,
-                    linearDamping=5,
-                    fixedRotation=True
+                    userData=agent
                 )
                 self.agents.append(agent)
         self.n_alive = self.n_agents.copy()
@@ -113,7 +104,6 @@ class TDM(gym.Env):
     def step(self, actions=None):
         # print(settings)
         if self.done: # "Episode is finished."
-            print("Episode is finished.")
             self.quit() # TODO: is quit() necessary?
 
 

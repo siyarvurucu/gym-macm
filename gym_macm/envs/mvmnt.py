@@ -32,28 +32,33 @@ class Flock(gym.Env):
     another object, it gets negative reward
     """
 
-    def __init__(self, n_agents = 10, actors = None, colors = None,
+    def __init__(self, n_agents = [10], actors = None, colors = None, targets = None,
                 **kwargs):
         self.settings = flockSettings(**kwargs)
         self.framework = PygletFramework(self.settings) if self.settings.render else NoRender(self.settings)
         self.framework.env = self
         self.done = False
         self.n_agents = n_agents
+        self.n_targets = 1 if targets == None else len(np.unique(targets))
+        self.targets_idx = targets
         self.time_passed = 0
 
         # create random target location
-        self.t_min, self.t_max = self.settings.target_mindist, self.settings.target_maxdist
-        rand_angle = 2 * np.pi * random.random()
-        rand_dist = self.t_min + random.random()*(self.t_max-self.t_min)
-        self.target = b2Vec2(rand_dist*np.cos(rand_angle), rand_dist*np.sin(rand_angle))
-        if self.settings.render:
-            self.framework.gui_objects["target"] = {'shape': 'circle',
-                                                    'values': [self.target, self.settings.reward_radius, b2Color(1, 1, 1)]}
+        self.targets = []
+        for t in range(self.n_targets):
+            self.t_min, self.t_max = self.settings.target_mindist, self.settings.target_maxdist
+            rand_angle = 2 * np.pi * random.random()
+            rand_dist = self.t_min + random.random()*(self.t_max-self.t_min)
+            self.targets.append(b2Vec2(rand_dist*np.cos(rand_angle), rand_dist*np.sin(rand_angle)))
+            if self.settings.render:
+                self.framework.gui_objects["target" + str(t)] = {'shape': 'circle',
+                                                        'values': [self.targets[t], self.settings.reward_radius, b2Color(1, 1, 1)]}
+                self.selected_target = 0
 
 
         # create agents
         self.agents = []
-        for i in range(self.n_agents[0]):
+        for i in range(sum(self.n_agents)):
             x = self.settings.start_spread * (random.random() - 0.5) + self.settings.start_point[0]
             y = self.settings.start_spread * (random.random() - 0.5) + self.settings.start_point[1]
             angle = random.uniform(-1,1) * np.pi
@@ -146,7 +151,8 @@ class Flock(gym.Env):
                 contact.fixtureB.body.userData.color = b2Color(1, 0.2, 0.2)
         for agent in self.agents:
             if agent.id not in rewards:
-                d = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
+                d = np.sqrt(b2DistanceSquared(self.targets[self.targets_idx[
+                                                               agent.id]], agent.body.position))
                 if self.settings.reward_mode=="linear":
                     rewards[agent.id] = (-d/35) + 1
                     if self.settings.render:
@@ -183,8 +189,9 @@ class Flock(gym.Env):
                                            "id": closest_agent.id,
                                            "position": position})
 
-            rel_position = self.target - agent.body.position
-            r = np.sqrt(b2DistanceSquared(self.target, agent.body.position))
+            target = self.targets[self.targets_idx[agent.id]]
+            rel_position = target - agent.body.position
+            r = np.sqrt(b2DistanceSquared(target, agent.body.position))
             t = np.arctan2(rel_position[1], rel_position[0]) - agent.body.angle
             t = t - np.sign(t) * 2 * np.pi if np.abs(t) > np.pi else t
             if self.settings.coord == "polar":
@@ -227,16 +234,21 @@ class Flock(gym.Env):
     def BeginContact(self, agent1, agent2):
         pass
 
-    def CheckKeys(self):
+    def CheckKeys(self, keys):
+        if self.settings.render:
+            for k in keys:
+                if keys[k] and (48<k<58):
+                    self.selected_target = k - 49
+
         pass
 
     def MouseDown(self, p):
         """
         Mouse moved to point p, in world coordinates.
         """
-        self.target = p
+        self.targets[self.selected_target] = p
 
-        self.framework.gui_objects["target"] = {'shape':'circle',
+        self.framework.gui_objects["target"+str(self.selected_target)] = {'shape':'circle',
                                                 'values': [p,self.settings.reward_radius,b2Color(1,1,1)]}
 
     def quit(self):

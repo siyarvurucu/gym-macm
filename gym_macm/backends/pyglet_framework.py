@@ -375,7 +375,7 @@ class PygletDraw(b2Draw):
 
         self.batch.add(tf_count, gl.GL_TRIANGLES, self.blended,
                        ('v2f', tf_vertices),
-                       ('c4f', [1 * color.r, 1 * color.g, 1 * color.b, 0.5] * tf_count))
+                       ('c4f', [1 * color.r, 1 * color.g, 1 * color.b, 0.3] * tf_count))
 
         self.batch.add(ll_count, gl.GL_LINES, None,
                        ('v2f', ll_vertices),
@@ -384,7 +384,7 @@ class PygletDraw(b2Draw):
         p = b2Vec2(center) + radius * b2Vec2(axis)
         self.batch.add(2, gl.GL_LINES, None,
                        ('v2f', (center[0], center[1], p[0], p[1])),
-                       ('c3f', [1.0, 0.0, 0.0] * 2))
+                       ('c4f', [1.0, 0.0, 0.0, 1] * 2))
 
     def DrawPolygon(self, vertices, color):
         """
@@ -698,10 +698,10 @@ class PygletFramework(FrameworkBase):
         self.window._enable_event_queue = False
         pyglet.app.run()
 
-        if self.settings.record:
-            rec_dir = self.settings.record_dir
-            os.system("ffmpeg -framerate 60 -pattern_type sequence -start_number 120 "
-                      f"-i '{rec_dir}%d.png' -r 15 -vf scale=512:-1 {rec_dir}out.gif")
+        # if self.settings.record:
+        #     rec_dir = self.settings.record_dir
+        #     os.system("ffmpeg -framerate 60 -pattern_type sequence -start_number 120 "
+        #               f"-i '{rec_dir}%d.png' -r 15 -vf scale=512:-1 {rec_dir}out.gif")
         self.world.contactListener = None
         self.world.destructionListener = None
         self.world.renderer = None
@@ -795,7 +795,7 @@ class PygletFramework(FrameworkBase):
             self.viewZoom = 1.0
             self.viewCenter = (0.0, 20.0)
 
-        self.env.CheckKeys()
+        self.env.CheckKeys(keys)
 
     def Step(self, settings):
        super(PygletFramework, self).Step(settings)
@@ -865,7 +865,8 @@ class PygletFramework(FrameworkBase):
         """
         Callback indicating 'key' has been pressed down.
         """
-        pass
+        if key == Keys.K_r:
+            self.settings.record = ~self.settings.record
 
     def KeyboardUp(self, key):
         """

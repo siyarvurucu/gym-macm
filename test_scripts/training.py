@@ -25,9 +25,9 @@ if COORD == "cartesian":
 if COORD == "polar":
     edge_attr_size = 2
 
-Qnet = MyModel_1(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
+Qnet = MyModel_4(edge_attr_size = edge_attr_size) #MyModel_1(mlp=fc1)
 # Qnet.load_state_dict(torch.load("saved_models/recent",map_location=torch.device('cpu')))
-Tnet = MyModel_1(edge_attr_size = edge_attr_size)
+Tnet = MyModel_4(edge_attr_size = edge_attr_size)
 Tnet.load_state_dict(Qnet.state_dict())
 
 device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
@@ -66,14 +66,15 @@ logger = {"Q value":[0],"Reward":[0], "Loss":[]}
 plotter = training_plotter(logger)
 
 gamma = 0.999
-train_steps = round(1e+7 / batch_size)
-eps_st, eps_end, eps_decay = 0.9, 0.05, train_steps/2
+train_steps = round(3e+7 / batch_size)
+eps_st, eps_end, eps_decay = 0.9, 0.05, train_steps/4
 # time_limit x hz determines the amount of collected data.
 # the constant at collect_x is the ratio (collected_sample / trained_sample)
 collect_x = round(10 * (TIME_LIMIT*HZ) / batch_size)
 update_target_x = int(1e+3 / batch_size)
-simulate_x = round(3e+5 / batch_size)
+simulate_x = round(3e+6 / batch_size)
 plot_x = round(0.5*1e+5 / batch_size)
+rew_best = 0
 st = time.time()
 
 
@@ -138,9 +139,15 @@ for i in range(train_steps):
                  printModel=exp_name, printIteration=i,
                  )
 
+    rew_mean = torch.mean(rewards).item()
+    if rew_mean > (rew_best+0.025):
+        rew_best = rew_mean
+        print("Best reward: %f"%rew_best)
+        torch.save(Qnet.state_dict(), "saved_models/best_recent")
+        torch.save(optimizer.state_dict(), "saved_models/best_opt_recent")
 
     logger["Q value"].append(torch.mean(next_state_values).item())
-    logger["Reward"].append(torch.mean(rewards).item())
+    logger["Reward"].append(rew_mean)
     logger["Loss"].append(loss.item())
     if (i % plot_x) == 0:
         plotter(logger)

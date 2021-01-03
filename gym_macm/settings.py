@@ -145,4 +145,32 @@ class flockSettings(fwSettings):
         self.reward_radius =  self._reward_radius if self.reward_mode == "binary" else 1
 
 
+class combatSettings(fwSettings):
+    def __init__(self, **kwargs):
+        super(combatSettings, self).__init__()
 
+        # display
+        self.render = False
+        self.record = False
+        self.record_dir = "../imgs/"
+        self.verbose_display = True
+
+        # environment
+        self.start_spread = 20
+        self.start_point = [0, 0]
+        self.agent_rotation_speed = 0.8 * (2 * np.pi)
+        self.agent_force = 20
+        self.time_limit = 60
+        self.cooldown_atk = 1  # minimum time between consecutive attacks
+        self.cooldown_mov_penalty = 0.5 # movement speed penalty. Maybe due to attacking or getting hit
+
+
+        circle = b2FixtureDef(
+            shape=b2CircleShape(radius=0.5
+                                ),
+            density=1,
+            friction=0.3
+        )
+        self.bodySettings = {"fixtures": circle, "linearDamping": 5, "fixedRotation": True}
+
+        # task
