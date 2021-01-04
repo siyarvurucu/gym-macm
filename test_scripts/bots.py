@@ -1,7 +1,6 @@
 import numpy as np
 
-def bot0(obs):
-    # print(obs)
+def combat(obs):
     # Attacks closest enemy
     enemies = [agent for agent in obs["agents"] if (agent["type"]==0)]
     if enemies:
