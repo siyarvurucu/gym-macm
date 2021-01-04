@@ -31,16 +31,22 @@ env.run()
 Flocking
 -----
 
-Agents are expected to move to a randomly selected target location (If rendered, you can click to change the target location). In binary reward mode, an agent is rewarded +1 
-if it is close to the target, within a radius. In linear mode, rewards are proportional with the distance. 
-Agents are rewarded with -1 if they collide with another object. 
+Agents are expected to move to a randomly selected target location (If rendered, you can click to change the target location). 
 
+**Rewards:** In binary reward mode, agents are rewarded with +1 if they are closer than a predefined distance. In linear mode, rewards are inversely proportional with the distance between agents and their target. 
+Agents are rewarded with -1 if they collide with another object.
+
+**Observation:**
 Each agent observe relative locations of the target and closest of the remaining agents. 
+
+**Multiple flocks**: `targets` argument (optional) lets agents have different targets. E.g. `gym.make(n_agents = 6, actors = [bots.flock()]*6, targets = [0,0,1,1,2,2])` creates 3 targets associated with 2 agents each.
 
 ![Flock](imgs/flock.gif)
 
 Combat
 -----
+Soon to be updated.
+
 ![Alt Text](imgs/tdm_3_15.gif)
 
 Installation

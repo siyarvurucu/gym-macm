@@ -18,23 +18,21 @@
 # misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 
-# This is an altered version.
+# This is an altered version. https://github.com/siyarvurucu/gym-macm
+
 """
 Global Keys:
-    Space  - shoot projectile
     Z/X    - zoom
     Escape - quit
 
 Other keys can be set by the individual test.
 
 Mouse:
-    Left click  - select/drag body (creates mouse joint)
     Right click - pan
-    Shift+Left  - drag to create a directional projectile
     Scroll      - zoom
 
-You can easily add your own tests based on test_empty.
 """
+
 import string
 import numpy as np
 import os
@@ -45,8 +43,6 @@ from Box2D import b2Vec2, b2Draw
 from Box2D import b2_staticBody, b2_kinematicBody, b2Color, b2Mul ,b2PolygonShape, \
     b2LoopShape, b2EdgeShape, b2CircleShape
 from ..cm_framework import (FrameworkBase, Keys)
-# from ..settings import fwSettings
-
 
 class grBlended (pyglet.graphics.Group):
     """
@@ -698,10 +694,11 @@ class PygletFramework(FrameworkBase):
         self.window._enable_event_queue = False
         pyglet.app.run()
 
-        # if self.settings.record:
-        #     rec_dir = self.settings.record_dir
-        #     os.system("ffmpeg -framerate 60 -pattern_type sequence -start_number 120 "
-        #               f"-i '{rec_dir}%d.png' -r 15 -vf scale=512:-1 {rec_dir}out.gif")
+        if self.settings.record:
+            rec_dir = self.settings.record_dir
+            os.system("ffmpeg -framerate 60 -pattern_type sequence -start_number 0 "
+                      f"-i '{rec_dir}%d.png' -r 15 -vf scale=640:-1 {rec_dir}out.gif")
+
         self.world.contactListener = None
         self.world.destructionListener = None
         self.world.renderer = None

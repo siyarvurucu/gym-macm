@@ -18,7 +18,7 @@
 # misrepresented as being the original software.
 # 3. This notice may not be removed or altered from any source distribution.
 
-# This is an altered version.
+# This is an altered version. https://github.com/siyarvurucu/gym-macm
 
 """
 The framework's base is FrameworkBase. See its help for more information.

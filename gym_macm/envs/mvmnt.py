@@ -97,15 +97,15 @@ class Flock(gym.Env):
         for agent in self.agents:
 
             #
-            # Rotation: 0,1,2 = CW, NOOP, CCW
+            # Rotation: action[2]: 0,1,2 = CW, NOOP, CCW
             agent.body.angle = (agent.body.angle + (actions[agent.id][2]-1) *
                                 agent.rotation_speed * (1/self.settings.hz))
             if np.abs(agent.body.angle) > np.pi:
                 agent.body.angle -= np.sign(agent.body.angle) * (2 * np.pi)
 
             # Movement
-            # 0,1,2 = BACKWARD, NOOP, FORWARD
-            # 0,1,2 = BACKWARD, NOOP, FORWARD
+            # action[0]: 0,1,2 = BACKWARD, NOOP, FORWARD
+            # action[1]: 0,1,2 = LEFT, NOOP, RIGHT
             angle = agent.body.angle
             c = 1 / np.sqrt(2) if ((actions[agent.id][0] != 1) and (actions[agent.id][1] != 1)) else 1
             x_force = (np.cos(angle)            * (actions[agent.id][0]-1) +
@@ -115,9 +115,9 @@ class Flock(gym.Env):
 
             agent.body.ApplyForce(force=(x_force, y_force), point=agent.body.position, wake=True)
 
-        # physics and rendering
-        self.framework.Step(self.settings)
-        
+
+        self.framework.Step(self.settings) # physics and rendering
+
         rewards = self.get_rewards()
         self.time_passed += (1/self.settings.hz)
         if  (self.time_passed > self.settings.time_limit):
@@ -154,7 +154,7 @@ class Flock(gym.Env):
                 d = np.sqrt(b2DistanceSquared(self.targets[self.targets_idx[
                                                                agent.id]], agent.body.position))
                 if self.settings.reward_mode=="linear":
-                    rewards[agent.id] = (-d/35) + 1
+                    rewards[agent.id] = (-d/35) + 1 # arbitrary...
                     if self.settings.render:
                         agent.reset_color()
                 if self.settings.reward_mode=="binary":
@@ -271,10 +271,7 @@ if __name__ == "__main__":
 
     else:
         while not world.done:
-            # actions = world.action_space.sample()
             world.step()
-
-
 
     print(world.time_passed)
     print(time.time() - s)
