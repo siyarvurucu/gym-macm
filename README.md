@@ -41,6 +41,8 @@ Each agent observe relative locations of the target and closest of the remaining
 
 **Multiple flocks**: `targets` argument (optional) lets agents have different targets. E.g. `gym.make(n_agents = 6, actors = [bots.flock()]*6, targets = [0,0,1,1,2,2])` creates 3 targets associated with 2 agents each.
 
+**Demos**:
+Three different Graph Neural Network models are trained with Double Q Learning algorithm and same hyperparameters.
 ![Flock](imgs/flock.gif)
 
 Combat
