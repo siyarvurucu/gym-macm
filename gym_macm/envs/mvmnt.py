@@ -40,7 +40,7 @@ class Flock(gym.Env):
         self.done = False
         self.n_agents = n_agents
         self.n_targets = 1 if targets == None else len(np.unique(targets))
-        self.targets_idx = targets
+        self.targets_idx = [0]*n_agents[0] if targets == None else targets
         self.time_passed = 0
 
         # create random target location
