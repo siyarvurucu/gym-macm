@@ -43,6 +43,7 @@ Each agent observe relative locations of the target and closest of the remaining
 
 **Demos**:  
 Three different Graph Neural Network models are trained with Double Q Learning algorithm and same hyperparameters.  
+  
 ![Flock](imgs/flock.gif)
 
 Combat
