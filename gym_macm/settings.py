@@ -133,6 +133,7 @@ class flockSettings(fwSettings):
         self.bodySettings = {"fixtures": circle, "linearDamping": 5, "fixedRotation": True}
 
         # task
+        self.action_mode = "discrete"
         self.reward_mode = "binary"
         self._reward_radius = 7
         self.target_mindist = 25

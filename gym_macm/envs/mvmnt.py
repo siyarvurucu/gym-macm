@@ -93,28 +93,40 @@ class Flock(gym.Env):
 
         assert self.action_space.contains(actions)
 
-        # Agent actions: 3 Discrete in (0,1,2)
-        for agent in self.agents:
 
-            #
-            # Rotation: action[2]: 0,1,2 = CW, NOOP, CCW
-            agent.body.angle = (agent.body.angle + (actions[agent.id][2]-1) *
-                                agent.rotation_speed * (1/self.settings.hz))
-            if np.abs(agent.body.angle) > np.pi:
-                agent.body.angle -= np.sign(agent.body.angle) * (2 * np.pi)
+        if self.settings.action_mode == "discrete":
+            # Agent actions: 3 Discrete in (0,1,2)
+            for agent in self.agents:
 
-            # Movement
-            # action[0]: 0,1,2 = BACKWARD, NOOP, FORWARD
-            # action[1]: 0,1,2 = LEFT, NOOP, RIGHT
-            angle = agent.body.angle
-            c = 1 / np.sqrt(2) if ((actions[agent.id][0] != 1) and (actions[agent.id][1] != 1)) else 1
-            x_force = (np.cos(angle)            * (actions[agent.id][0]-1) +
-                      np.cos(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force
-            y_force = (np.sin(angle)            * (actions[agent.id][0]-1) +
-                      np.sin(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force
+                #
+                # Rotation: action[2]: 0,1,2 = CW, NOOP, CCW
+                agent.body.angle = (agent.body.angle + (actions[agent.id][2]-1) *
+                                    agent.rotation_speed * (1/self.settings.hz))
+                if np.abs(agent.body.angle) > np.pi:
+                    agent.body.angle -= np.sign(agent.body.angle) * (2 * np.pi)
 
-            agent.body.ApplyForce(force=(x_force, y_force), point=agent.body.position, wake=True)
+                # Movement
+                # action[0]: 0,1,2 = BACKWARD, NOOP, FORWARD
+                # action[1]: 0,1,2 = LEFT, NOOP, RIGHT
+                angle = agent.body.angle
+                c = 1 / np.sqrt(2) if ((actions[agent.id][0] != 1) and (actions[agent.id][1] != 1)) else 1
+                x_force = (np.cos(angle)            * (actions[agent.id][0]-1) +
+                          np.cos(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force
+                y_force = (np.sin(angle)            * (actions[agent.id][0]-1) +
+                          np.sin(angle + np.pi / 2) * (actions[agent.id][1] - 1)) * c * agent.force
 
+                agent.body.ApplyForce(force=(x_force, y_force), point=agent.body.position, wake=True)
+
+        if self.settings.action_mode == "continuous":
+            # Continuous: x,y: force on two directions. Rotation info becomes obsolete.
+            for agent in self.agents:
+                x, y = actions[agent.id]
+                if (x**2 + y**2) > 1:
+                    x = np.sqrt(x**2/(x**2 + y**2))
+                    y = np.sqrt(y**2/(x**2 + y**2))
+                x_force = x * agent.force
+                y_force = y * agent.force
+                agent.body.ApplyForce(force=(x_force, y_force), point=agent.body.position, wake=True)
 
         self.framework.Step(self.settings) # physics and rendering
 
@@ -128,8 +140,12 @@ class Flock(gym.Env):
         return self.obs, rewards
 
     def create_space(self):
-        self.action_space = spaces.Dict({agent.id: spaces.MultiDiscrete([3, 3, 3])
-                                         for agent in self.agents})
+        if self.settings.action_mode == "discrete":
+            self.action_space = spaces.Dict({agent.id: spaces.MultiDiscrete([3, 3, 3])
+                                             for agent in self.agents})
+        if self.settings.action_mode == "continuous":
+            self.action_space = spaces.Dict({agent.id: spaces.Box(np.array([-1,-1]),np.array([1,1]))
+                                             for agent in self.agents})
 
         self.observation_space = spaces.Dict(
             {agent.id: spaces.Dict({"nodes": spaces.Tuple([spaces.Dict({"type": spaces.Discrete(1),

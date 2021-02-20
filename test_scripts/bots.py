@@ -59,3 +59,8 @@ def flock(obs,
             return np.array([forward, 1, rotation])
     else:
         return idle()[:3]
+
+def flock_cont(obs,
+          coord="polar"
+          ):
+    return np.array([1,1])
