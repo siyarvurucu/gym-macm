@@ -31,6 +31,8 @@ env.run()
 Flocking
 -----
 
+Soon: moving and fixed obstacles
+
 Agents are expected to move to a randomly selected target location (If rendered, you can click to change the target location). 
 
 **Rewards:** In binary reward mode, agents are rewarded with +1 if they are closer than a predefined distance. In linear mode, rewards are inversely proportional with the distance between agents and their target. 
