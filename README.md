@@ -1,6 +1,6 @@
-There are two ways to run environments
+There are two ways to run the environments
 
-1) Providing actions for all agents at each time step 
+1) Providing actions for all agents at each time step:   
 Environments cannot be rendered in real-time. This way is suited for training or sample collection.
 ```python
 import gym  
@@ -14,7 +14,7 @@ while not env.done:
     obs, rewards = env.step(actions)  
 ```
 
-2) Providing actors for each agent at the creation of the environment
+2) Providing actors for each agent at the creation of the environment:  
 
 ```python
 from Box2D import b2Color  
@@ -31,7 +31,7 @@ env.run()
 Flocking
 -----
 
-Soon: moving and fixed obstacles
+Soon: fixed and moving obstacles  
 
 Agents are expected to move to a randomly selected target location (If rendered, you can click to change the target location). 
 
