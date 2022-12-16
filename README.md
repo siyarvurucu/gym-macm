@@ -48,12 +48,6 @@ Three different Graph Neural Network models are trained with Double Q Learning a
   
 ![Flock](imgs/flock.gif)
 
-Combat
------
-Soon to be updated.
-
-![Alt Text](imgs/tdm_3_15.gif)
-
 Installation
 -----
 
